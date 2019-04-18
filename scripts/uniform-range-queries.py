@@ -70,14 +70,16 @@ def runLoads(loads, port):
 	cursor.execute("CREATE DATABASE IF NOT EXISTS experimental")
 	cursor.execute("USE experimental")
 	cursor.execute("DROP TABLE IF EXISTS ranges")
-	cursor.execute("CREATE TABLE IF NOT EXISTS ranges (number INT)")
+	cursor.execute("CREATE TABLE IF NOT EXISTS ranges (number INT, INDEX numberIndex (number))")
+	cursor.execute("SET SESSION query_cache_type=0")
 
 	init = time.time()
 
 	insert = "INSERT INTO ranges (number) VALUES (%s)"
-	cursor.executemany(insert, list(map(lambda number: (number,), loads.data)))
-	db.commit()
-	
+	for point in loads.data:
+		cursor.execute(insert, (point,))
+		db.commit()
+
 	inserted = time.time()
 	
 	query = "SELECT number FROM ranges WHERE number BETWEEN %s AND %s"
@@ -93,6 +95,6 @@ if __name__ == "__main__":
 	inputs = parse()
 	loads = generateLoads(inputs)
 	
-	for engine in [("Kelepso", inputs.kalepsoPort), ("MySQL", inputs.mysqlPort)]:
+	for engine in [("MySQL", inputs.mysqlPort), ("Kelepso", inputs.kalepsoPort)]:
 		times = runLoads(loads, engine[1])
 		print(f"For {engine[0]}: inserted in {int(times.insertion * 1000)} ms, queries in {int(times.queries * 1000)} ms")
