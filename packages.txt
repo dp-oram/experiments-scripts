@@ -1,2 +1,2 @@
-dotmap
 mysql-connector-python
+cx_Oracle
