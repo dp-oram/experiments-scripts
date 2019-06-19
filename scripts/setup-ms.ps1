@@ -13,7 +13,7 @@
 # Set-AzKeyVaultAccessPolicy -VaultName $akvName -ResourceGroupName $resourceGroup -PermissionsToKeys get, create, delete, list, update, import, backup, restore, wrapKey, unwrapKey, sign, verify -UserPrincipalName $azureCtx.Account
 # $akvKey = Add-AzureKeyVaultKey -VaultName $akvName -Name $akvKeyName -Destination "Software"
 
-$keyId = "d20aefb0699f4744a6b0dcf2b2c5e602"
+$keyId = "https://kalepso-bench.vault.azure.net/keys/my-key-2/d20aefb0699f4744a6b0dcf2b2c5e602"
 
 # Write-Output "Key generated."
 # Write-Output $akvKey.ID
@@ -22,7 +22,7 @@ $keyId = "d20aefb0699f4744a6b0dcf2b2c5e602"
 Import-Module "SqlServer"
 
 # Connect to your database.
-$serverName = "localhost,1433"
+$serverName = "128.197.11.210,1433"
 $databaseName = "master"
 $userId = "sa"
 $password = "Password123!"
@@ -39,16 +39,26 @@ Write-Output $connStr
 # Create a SqlColumnMasterKeySettings object for your column master key.
 $cmkSettings = New-SqlAzureKeyVaultColumnMasterKeySettings -KeyURL $keyId
 
+Write-Output "Generated settings."
+
 # Create column master key metadata in the database.
 $cmkName = "CMK1"
-New-SqlColumnMasterKey -Name $cmkName -InputObject $database -ColumnMasterKeySettings $cmkSettings
+# New-SqlColumnMasterKey -Name $cmkName -InputObject $database -ColumnMasterKeySettings $cmkSettings
+
+Write-Output "Generated master key."
 
 # Authenticate to Azure
 Add-SqlAzureAuthenticationContext -Interactive
+
+Write-Output "Authenticated."
 
 # Generate a column encryption key, encrypt it with the column master key and create column encryption key metadata in the database. 
 $cekName = "CEK1"
 New-SqlColumnEncryptionKey -Name $cekName -InputObject $database -ColumnMasterKey $cmkName
 
+Write-Output "Generated column encryption key."
+
 # List column master keys for the specified database.
 Get-SqlColumnMasterKey -InputObject $database
+
+Write-Output "Done."
