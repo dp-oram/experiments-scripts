@@ -168,18 +168,22 @@ CREATE TABLE #variables (
 )
 
 CREATE TABLE [dbo].[ranges](
-	[point] [int] NOT NULL
+	[point] [int] ENCRYPTED WITH (
+		COLUMN_ENCRYPTION_KEY = CEK1,
+		ENCRYPTION_TYPE = DETERMINISTIC,
+		ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
+	) NOT NULL
 ) ON [PRIMARY]
 
 GO
 
 INSERT INTO #variables (name, value) VALUES ( 'start', GETDATE() )
 GO
-
 	""")
 
 	for point in data:
-		print(f"INSERT INTO [dbo].[ranges] (point) VALUES ( {point} )")
+		print(f"DECLARE @toInsert INT = {point}")
+		print("INSERT INTO [dbo].[ranges] (point) VALUES ( @toInsert )")
 		print("GO")
 
 	print("""
@@ -199,8 +203,9 @@ GO
 	""")
 
 	for rangeQuery in queries:
-		print("DECLARE @blob_eater SQL_VARIANT;")
-		print(f"SELECT @blob_eater=point FROM [dbo].[ranges] WHERE point BETWEEN {rangeQuery[0]} AND {rangeQuery[1]}")
+		print("DECLARE @blob_eater INT;")
+		print(f"DECLARE @value INT = {rangeQuery[1]}")
+		print("SELECT @blob_eater = point FROM [dbo].[ranges] WHERE point = @value")
 		print("GO")
 
 	print("""
