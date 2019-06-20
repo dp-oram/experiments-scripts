@@ -2,6 +2,25 @@
 
 import random
 import time
+from enum import Enum, auto
+
+
+class Engine(Enum):
+	kalepso = auto()
+	mariaDB = auto()
+	oracle = auto()
+	microsoft = auto()
+
+	def __str__(self):
+		return self.name
+
+	@staticmethod
+	def value(key):
+		try:
+			return Engine[key]
+		except KeyError:
+			raise ValueError()
+
 
 def parse():
 	import argparse
@@ -29,20 +48,22 @@ def parse():
 		return percent
 
 	parser = argparse.ArgumentParser(description="Run simple uniform range queries on Kalepso.")
+
 	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}]")
 	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=argcheckInputSize, required=False, default=int(inputSizeDefault / 10), help=f"The number of queries [{inputSizeMin} - {inputSizeMax}]")
 	parser.add_argument("--max", dest="max", metavar="input-max", type=argcheckInputMax, required=False, default=inputSizeDefault, help=f"The max value of data points (min is 0) [>0]")
 	parser.add_argument("--range", dest="range", metavar="range-percent", type=argcheckRange, required=False, default=0.3, help=f"The range size as percent of max-min data [0.01 - 0.9]")
+
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
-	parser.add_argument("--kalepso-port", dest="kalepsoPort", metavar="kalepso-port", type=int, default=3306, required=False, help="Kalepso port")
-	parser.add_argument("--mysql-port", dest="mysqlPort", metavar="mysql-port", type=int, default=3307, required=False, help="MySQL port")
-	parser.add_argument("--oracle-port", dest="oraclePort", metavar="oracle-port", type=int, default=1521, required=False, help="Oracle port")
+
+	parser.add_argument('--engine', dest="engine", metavar="engine", type=Engine.value, choices=list(Engine), required=True, help="Engine to run benchmark against")
+	parser.add_argument("--port", dest="port", metavar="port", type=int, required=False, help="Engine's port (not required for MS)")
 
 	args = parser.parse_args()
 
 	random.seed(args.seed)
 
-	return args.size, args.max, args.range, args.queries, args.kalepsoPort, args.mysqlPort, args.oraclePort
+	return args.size, args.max, args.range, args.queries, args.engine, args.port
 
 
 def generateLoads(dataSize, maxValue, queryRange, queriesSize):
@@ -132,12 +153,77 @@ def runLoadsOracle(data, queries, port):
 	return inserted - init, queried - inserted
 
 
+def generateMSSQLLoad(data, queries):
+
+	print("""
+USE [master]
+GO
+
+DROP TABLE IF EXISTS [dbo].[ranges];
+DROP TABLE IF EXISTS #variables;
+
+CREATE TABLE #variables (
+	name VARCHAR(20) PRIMARY KEY,
+	value DATETIME
+)
+
+CREATE TABLE [dbo].[ranges](
+	[point] [int] NOT NULL
+) ON [PRIMARY]
+
+GO
+
+INSERT INTO #variables (name, value) VALUES ( 'start', GETDATE() )
+GO
+
+	""")
+
+	for point in data:
+		print(f"INSERT INTO [dbo].[ranges] (point) VALUES ( {point} )")
+		print("GO")
+
+	print("""
+
+INSERT INTO #variables (name, value) VALUES ( 'end', GETDATE() )
+
+SELECT DATEDIFF(
+	millisecond,
+	(SELECT value FROM #variables WHERE name = 'start'),
+	(SELECT value FROM #variables WHERE name = 'end')
+)
+
+DELETE FROM #variables;
+
+INSERT INTO #variables (name, value) VALUES ( 'start', GETDATE() )
+GO
+	""")
+
+	for rangeQuery in queries:
+		print("DECLARE @blob_eater SQL_VARIANT;")
+		print(f"SELECT @blob_eater=point FROM [dbo].[ranges] WHERE point BETWEEN {rangeQuery[0]} AND {rangeQuery[1]}")
+		print("GO")
+
+	print("""
+INSERT INTO #variables (name, value) VALUES ( 'end', GETDATE() )
+
+SELECT DATEDIFF(
+	millisecond,
+	(SELECT value FROM #variables WHERE name = 'start'),
+	(SELECT value FROM #variables WHERE name = 'end')
+)
+	""")
+
+
 if __name__ == "__main__":
 
-	dataSize, maxValue, queryRange, queriesSize, mysqlPort, kalepsoPort, oraclePort = parse()
+	dataSize, maxValue, queryRange, queriesSize, engine, port = parse()
 	data, queries = generateLoads(dataSize, maxValue, queryRange, queriesSize)
 
-	for engine in [("Oracle", oraclePort, runLoadsOracle), ("MySQL", mysqlPort, runLoadsMySQL), ("Kelepso", kalepsoPort, runLoadsMySQL)]:
-	# for engine in [("Oracle", oraclePort, runLoadsOracle)]:
-		insertionTime, queryTime = engine[2](data, queries, engine[1])
-		print(f"For {engine[0]}: inserted in {int(insertionTime * 1000)} ms, queries in {int(queryTime * 1000)} ms")
+	if engine == Engine.microsoft:
+		generateMSSQLLoad(data, queries)
+	else:
+		if engine == Engine.kalepso or engine == Engine.mariaDB:
+			insertionTime, queryTime = runLoadsMySQL(data, queries, port)
+		else:
+			insertionTime, queryTime = runLoadsOracle(data, queries, port)
+		print(f"For {engine}: inserted in {int(insertionTime * 1000)} ms, queries in {int(queryTime * 1000)} ms")
