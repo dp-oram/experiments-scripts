@@ -203,10 +203,35 @@ GO
 	""")
 
 	for rangeQuery in queries:
-		print("DECLARE @blob_eater INT;")
-		print(f"DECLARE @value INT = {rangeQuery[1]}")
-		print("SELECT @blob_eater = point FROM [dbo].[ranges] WHERE point = @value")
-		print("GO")
+		print("""
+		
+DECLARE @cursor CURSOR;
+DECLARE @point INT;
+DECLARE @blob_eater INT;
+
+BEGIN
+	SET @cursor = CURSOR FOR
+	select point from [dbo].[ranges]
+	
+	OPEN @cursor 
+	FETCH NEXT FROM @cursor 
+	INTO @point
+
+	WHILE @@FETCH_STATUS = 0
+	BEGIN
+	
+		PRINT N'point: ' + @point;
+	
+		FETCH NEXT FROM @cursor 
+		INTO @point 
+	END; 
+
+	CLOSE @cursor;
+	DEALLOCATE @cursor;
+END;
+GO
+		
+		""")
 
 	print("""
 INSERT INTO #variables (name, value) VALUES ( 'end', GETDATE() )
