@@ -2,6 +2,7 @@ using System;
 using System.Data;
 using System.Data.SqlClient;
 using System.IO;
+using System.Collections.Generic;
 
 namespace microsoft
 {
@@ -35,32 +36,42 @@ namespace microsoft
 				) ON [PRIMARY];
 			"));
 
-			System.Diagnostics.Stopwatch insertion, queries;
-
+			var points = new List<int>();
+			var ranges = new List<(int, int)>();
 			using (StreamReader sr = File.OpenText(_dataFile))
 			{
-				int points = int.Parse(sr.ReadLine());
-				int ranges = int.Parse(sr.ReadLine());
+				int pointsNum = int.Parse(sr.ReadLine());
+				int rangesNum = int.Parse(sr.ReadLine());
 
-				Console.WriteLine("Construction stage");
-
-				insertion = System.Diagnostics.Stopwatch.StartNew();
-				for (int i = 0; i < points; i++)
+				for (int i = 0; i < pointsNum; i++)
 				{
-					InsertPoint(int.Parse(sr.ReadLine()));
+					points.Add(int.Parse(sr.ReadLine()));
 				}
-				insertion.Stop();
 
-				Console.WriteLine("Queries stage");
-
-				queries = System.Diagnostics.Stopwatch.StartNew();
-				for (int i = 0; i < ranges; i++)
+				for (int i = 0; i < rangesNum; i++)
 				{
 					var range = sr.ReadLine().Split(' ');
-					RangeQuery(int.Parse(range[0]), int.Parse(range[1]));
+					ranges.Add((int.Parse(range[0]), int.Parse(range[1])));
 				}
-				queries.Stop();
 			}
+
+			Console.WriteLine("Construction stage");
+
+			var insertion = System.Diagnostics.Stopwatch.StartNew();
+			foreach (var point in points)
+			{
+				InsertPoint(point);
+			}
+			insertion.Stop();
+
+			Console.WriteLine("Queries stage");
+
+			var queries = System.Diagnostics.Stopwatch.StartNew();
+			foreach (var range in ranges)
+			{
+				RangeQuery(range.Item1, range.Item2);
+			}
+			queries.Stop();
 
 			Console.WriteLine($"For MS: inserted in {insertion.ElapsedMilliseconds} ms, queries in {queries.ElapsedMilliseconds} ms");
 			Console.WriteLine("Done. Press Enter to exit...");
