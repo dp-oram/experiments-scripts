@@ -155,93 +155,13 @@ def runLoadsOracle(data, queries, port):
 
 def generateMSSQLLoad(data, queries):
 
-	print("""
-USE [master]
-GO
-
-DROP TABLE IF EXISTS [dbo].[ranges];
-DROP TABLE IF EXISTS #variables;
-
-CREATE TABLE #variables (
-	name VARCHAR(20) PRIMARY KEY,
-	value DATETIME
-)
-
-CREATE TABLE [dbo].[ranges](
-	[point] [int] ENCRYPTED WITH (
-		COLUMN_ENCRYPTION_KEY = CEK1,
-		ENCRYPTION_TYPE = DETERMINISTIC,
-		ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
-	) NOT NULL
-) ON [PRIMARY]
-
-GO
-
-INSERT INTO #variables (name, value) VALUES ( 'start', GETDATE() )
-GO
-	""")
-
+	print(len(data))
+	print(len(queries))
 	for point in data:
-		print(f"DECLARE @toInsert INT = {point}")
-		print("INSERT INTO [dbo].[ranges] (point) VALUES ( @toInsert )")
-		print("GO")
-
-	print("""
-
-INSERT INTO #variables (name, value) VALUES ( 'end', GETDATE() )
-
-SELECT DATEDIFF(
-	millisecond,
-	(SELECT value FROM #variables WHERE name = 'start'),
-	(SELECT value FROM #variables WHERE name = 'end')
-)
-
-DELETE FROM #variables;
-
-INSERT INTO #variables (name, value) VALUES ( 'start', GETDATE() )
-GO
-	""")
-
-	for rangeQuery in queries:
-		print("""
-		
-DECLARE @cursor CURSOR;
-DECLARE @point INT;
-DECLARE @blob_eater INT;
-
-BEGIN
-	SET @cursor = CURSOR FOR
-	select point from [dbo].[ranges]
+		print(point)
 	
-	OPEN @cursor 
-	FETCH NEXT FROM @cursor 
-	INTO @point
-
-	WHILE @@FETCH_STATUS = 0
-	BEGIN
-	
-		PRINT N'point: ' + @point;
-	
-		FETCH NEXT FROM @cursor 
-		INTO @point 
-	END; 
-
-	CLOSE @cursor;
-	DEALLOCATE @cursor;
-END;
-GO
-		
-		""")
-
-	print("""
-INSERT INTO #variables (name, value) VALUES ( 'end', GETDATE() )
-
-SELECT DATEDIFF(
-	millisecond,
-	(SELECT value FROM #variables WHERE name = 'start'),
-	(SELECT value FROM #variables WHERE name = 'end')
-)
-	""")
+	for query in queries:
+		print(f"{query[0]} {query[1]}")
 
 
 if __name__ == "__main__":
