@@ -60,6 +60,9 @@ def parse():
 	parser.add_argument("--port", dest="port", metavar="port", type=int, required=False, help="Engine's port (not required for MS)")
 
 	args = parser.parse_args()
+	
+	if args.engine != Engine.microsoft and not args.port:
+		parser.error('--port is required when --engine is not microsoft.')
 
 	random.seed(args.seed)
 
