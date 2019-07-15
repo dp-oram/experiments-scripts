@@ -30,7 +30,7 @@ namespace microsoft
 				CREATE TABLE [dbo].[ranges](
 					[point] [int] ENCRYPTED WITH (
 						COLUMN_ENCRYPTION_KEY = WinCEKiMac,
-						ENCRYPTION_TYPE = DETERMINISTIC,
+						ENCRYPTION_TYPE = RANDOMIZED,
 						ALGORITHM = 'AEAD_AES_256_CBC_HMAC_SHA_256'
 					) NOT NULL
 				) ON [PRIMARY];
