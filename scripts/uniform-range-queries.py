@@ -26,7 +26,7 @@ def parse():
 	import argparse
 
 	inputSizeDefault = 100
-	inputSizeMin = 10
+	inputSizeMin = 1
 	inputSizeMax = 1000005
 
 	def argcheckInputSize(value):
