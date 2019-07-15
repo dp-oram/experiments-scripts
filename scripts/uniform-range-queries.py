@@ -27,7 +27,7 @@ def parse():
 
 	inputSizeDefault = 100
 	inputSizeMin = 10
-	inputSizeMax = 100000
+	inputSizeMax = 1000005
 
 	def argcheckInputSize(value):
 		number = int(value)
