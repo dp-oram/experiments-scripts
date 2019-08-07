@@ -26,8 +26,8 @@ def parse():
 	import argparse
 
 	inputSizeDefault = 100
-	inputSizeMin = 10
-	inputSizeMax = 100000
+	inputSizeMin = 1
+	inputSizeMax = 1000005
 
 	def argcheckInputSize(value):
 		number = int(value)
@@ -60,6 +60,9 @@ def parse():
 	parser.add_argument("--port", dest="port", metavar="port", type=int, required=False, help="Engine's port (not required for MS)")
 
 	args = parser.parse_args()
+
+	if args.engine != Engine.microsoft and not args.port:
+		parser.error('--port is required when --engine is not microsoft.')
 
 	random.seed(args.seed)
 
@@ -115,7 +118,7 @@ def runLoadsMySQL(data, queries, port):
 
 	queried = time.time()
 
-	return DotMap({"insertion": inserted - init, "queries": queried - inserted})
+	return inserted - init, queried - inserted
 
 
 def runLoadsOracle(data, queries, port):
@@ -159,7 +162,7 @@ def generateMSSQLLoad(data, queries):
 	print(len(queries))
 	for point in data:
 		print(point)
-	
+
 	for query in queries:
 		print(f"{query[0]} {query[1]}")
 
