@@ -52,7 +52,7 @@ def parse():
 	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}]")
 	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=argcheckInputSize, required=False, default=int(inputSizeDefault / 10), help=f"The number of queries [{inputSizeMin} - {inputSizeMax}]")
 	parser.add_argument("--max", dest="max", metavar="input-max", type=argcheckInputMax, required=False, default=inputSizeDefault, help=f"The max value of data points (min is 0) [>0]")
-	parser.add_argument("--range", dest="range", metavar="range-percent", type=argcheckRange, required=False, default=0.3, help=f"The range size as percent of max-min data [0.01 - 0.9]")
+	parser.add_argument("--range", dest="range", metavar="range-percent", type=argcheckRange, required=False, default=0.01, help=f"The range size as percent of max-min data [0.001 - 0.9]")
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 
