@@ -43,8 +43,8 @@ def parse():
 
 	def argcheckRange(value):
 		percent = float(value)
-		if percent <= 0.001 or percent >= 0.9:
-			raise argparse.ArgumentTypeError(f"Range must be above a percentage 1% to 90%. Given {percent}")
+		if percent < 0.001 or percent > 0.9:
+			raise argparse.ArgumentTypeError(f"Range must be above a percentage 0.01% to 90%. Given {percent}")
 		return percent
 
 	parser = argparse.ArgumentParser(description="Run simple uniform range queries on Kalepso.")
