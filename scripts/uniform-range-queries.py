@@ -7,7 +7,7 @@ from enum import Enum, auto
 
 class Engine(Enum):
 	kalepso = auto()
-	mariaDB = auto()
+	mariadb = auto()
 	oracle = auto()
 	microsoft = auto()
 
