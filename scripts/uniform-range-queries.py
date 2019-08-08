@@ -175,7 +175,7 @@ if __name__ == "__main__":
 	if engine == Engine.microsoft:
 		generateMSSQLLoad(data, queries)
 	else:
-		if engine == Engine.kalepso or engine == Engine.mariaDB:
+		if engine == Engine.kalepso or engine == Engine.mariadb:
 			insertionTime, queryTime = runLoadsMySQL(data, queries, port)
 		else:
 			insertionTime, queryTime = runLoadsOracle(data, queries, port)
