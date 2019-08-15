@@ -136,8 +136,6 @@ def runLoadsOracle(data, queries, port):
 
 	init = time.time()
 
-	cursor.execute("INSERT INTO employee (first_name, last_name, empID, salary) VALUES ('John', 'Doe', 1, 152)")
-
 	insert = "INSERT INTO ranges (point) VALUES (:point)"
 	for point in data:
 		cursor.execute(insert, point=point)
