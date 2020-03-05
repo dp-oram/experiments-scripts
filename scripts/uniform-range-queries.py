@@ -25,14 +25,18 @@ class Engine(Enum):
 def parse():
 	import argparse
 
-	inputSizeDefault = 100
-	inputSizeMin = 1
-	inputSizeMax = 1000005
+	inputSizeDefault = 1000
+	inputSizeMin = 100
+	inputSizeMax = 247000
+	
+	rangeSizeDefault = 10
+	rangeSizeMin = 2
+	rangeSizeMax = 1000
 
 	def argcheckInputSize(value):
 		number = int(value)
 		if number < inputSizeMin or number > inputSizeMax:
-			raise argparse.ArgumentTypeError(f"Input / queries size must be {inputSizeMin} to {inputSizeMax}. Given {number}")
+			raise argparse.ArgumentTypeError(f"Input size must be {inputSizeMin} to {inputSizeMax}. Given {number}")
 		return number
 
 	def argcheckInputMax(value):
@@ -42,17 +46,16 @@ def parse():
 		return number
 
 	def argcheckRange(value):
-		percent = float(value)
-		if percent < 0.001 or percent > 0.9:
-			raise argparse.ArgumentTypeError(f"Range must be above a percentage 0.01% to 90%. Given {percent}")
-		return percent
+		number = int(value)
+		if number < 2 or number > 1000:
+			raise argparse.ArgumentTypeError(f"Input / queries size must be {rangeSizeMin} to {rangeSizeMax}. Given {number}")
+		return number
 
 	parser = argparse.ArgumentParser(description="Run simple uniform range queries on Kalepso.")
 
 	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}]")
 	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=argcheckInputSize, required=False, default=int(inputSizeDefault / 10), help=f"The number of queries [{inputSizeMin} - {inputSizeMax}]")
-	parser.add_argument("--max", dest="max", metavar="input-max", type=argcheckInputMax, required=False, default=inputSizeDefault, help=f"The max value of data points (min is 0) [>0]")
-	parser.add_argument("--range", dest="range", metavar="range-percent", type=argcheckRange, required=False, default=0.01, help=f"The range size as percent of max-min data [0.001 - 0.9]")
+	parser.add_argument("--range", dest="range", metavar="range-size", type=argcheckRange, required=False, default=10, help=f"The range size [{rangeSizeMin} - {rangeSizeMax}]")
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 
@@ -66,19 +69,25 @@ def parse():
 
 	random.seed(args.seed)
 
-	return args.size, args.max, args.range, args.queries, args.engine, args.port
+	return args.size, args.range, args.queries, args.engine, args.port
 
 
-def generateLoads(dataSize, maxValue, queryRange, queriesSize):
-	data = []
+def generateLoads(dataSize, queryRange, queriesSize):
+	import pandas as pd
+
+	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/afb4d44111f42dbe9ed0148bee3b954d43e38907/state-of-california-2017.csv")
+	data = pd.read_csv("data.csv")
+	
+	print(data)
+
 	queries = []
-	for i in range(1, dataSize):
-		data += [random.randint(0, maxValue)]
+	# for i in range(1, dataSize):
+	# 	data += [random.randint(0, maxValue)]
 
-	querySize = int(maxValue * queryRange)
-	for i in range(1, queriesSize):
-		left = random.randint(0, maxValue - querySize)
-		queries += [(left, left + querySize)]
+	# querySize = int(maxValue * queryRange)
+	# for i in range(1, queriesSize):
+	# 	left = random.randint(0, maxValue - querySize)
+	# 	queries += [(left, left + querySize)]
 
 	return data, queries
 
@@ -167,14 +176,14 @@ def generateMSSQLLoad(data, queries):
 
 if __name__ == "__main__":
 
-	dataSize, maxValue, queryRange, queriesSize, engine, port = parse()
-	data, queries = generateLoads(dataSize, maxValue, queryRange, queriesSize)
+	dataSize, queryRange, queriesSize, engine, port = parse()
+	data, queries = generateLoads(dataSize, queryRange, queriesSize)
 
-	if engine == Engine.microsoft:
-		generateMSSQLLoad(data, queries)
-	else:
-		if engine == Engine.kalepso or engine == Engine.mariadb:
-			insertionTime, queryTime = runLoadsMySQL(data, queries, port)
-		else:
-			insertionTime, queryTime = runLoadsOracle(data, queries, port)
-		print(f"For {engine}: inserted in {int(insertionTime * 1000)} ms, queries in {int(queryTime * 1000)} ms")
+	# if engine == Engine.microsoft:
+	# 	generateMSSQLLoad(data, queries)
+	# else:
+	# 	if engine == Engine.kalepso or engine == Engine.mariadb:
+	# 		insertionTime, queryTime = runLoadsMySQL(data, queries, port)
+	# 	else:
+	# 		insertionTime, queryTime = runLoadsOracle(data, queries, port)
+	# 	print(f"For {engine}: inserted in {int(insertionTime * 1000)} ms, queries in {int(queryTime * 1000)} ms")
