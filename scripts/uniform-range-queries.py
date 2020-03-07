@@ -75,8 +75,8 @@ def parse():
 def generateLoads(dataSize, queryRange, queriesSize):
 	import pandas as pd
 
-	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/afb4d44111f42dbe9ed0148bee3b954d43e38907/state-of-california-2017.csv")
-	data = pd.read_csv("data.csv")
+	data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/afb4d44111f42dbe9ed0148bee3b954d43e38907/state-of-california-2017.csv")
+	# data = pd.read_csv("data.csv")
 	
 	print(data)
 
