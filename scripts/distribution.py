@@ -3,7 +3,9 @@
 from __future__ import division
 import numpy as np
 import pandas as pd
-
+import math
+import string
+import random
 
 def histogram(salaries):
 
@@ -60,14 +62,53 @@ def expand(salaries, n):
 	return random_from_cdf
 
 
+def addPayload(salaries, sample):
+	
+	yield ["Employee Name", "Job Title", "Base Pay", "Overtime Pay", "Other Pay", "Benefits", "Total Pay", "Total Pay & Benefits", "Year", "Notes", "Agency", "Status"]
+
+	def stringLength(key):
+		return int(np.mean(sample[key].apply(lambda value: len(value) if isinstance(value, str) else 0)))
+
+	def randomString(length):
+		letters = string.ascii_lowercase
+		return ''.join(random.choice(letters) for i in range(length))
+
+	nameLength = stringLength("Employee Name")
+	jobLength = stringLength("Job Title")
+	notesLength = stringLength("Notes")
+	agencyLength = stringLength("Agency")
+	statusLength = stringLength("Status")
+	
+	for salary in salaries:
+		yield [
+			randomString(nameLength),
+			randomString(jobLength),
+			random.uniform(0.0, 150000.0),
+			random.uniform(0.0, 150000.0),
+			random.uniform(0.0, 150000.0),
+			random.uniform(0.0, 150000.0),
+			random.uniform(0.0, 150000.0),
+			salary,
+			2020,
+			randomString(notesLength),
+			randomString(agencyLength),
+			randomString(statusLength)
+		]
+
+
 if __name__ == "__main__":
 
 	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
 	data = pd.read_csv("data.csv")
+	# data = pd.read_csv("extended.csv")
 	# data.sort_values("Total Pay & Benefits", axis=0, ascending=True, inplace=True, na_position='last')
 	salaries = data["Total Pay & Benefits"]
 	# salaries = salaries[salaries.between(salaries.quantile(.05), salaries.quantile(.95))]
+	
+	# histogram(salaries)
 
 	salaries = expand(salaries, 10**6)
-
-	histogram(salaries)
+	
+	with open("extended.csv", "w") as out:
+		for record in addPayload(salaries, data):
+			out.write(','.join(map(str, record)) + "\n")
