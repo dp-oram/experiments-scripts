@@ -1,19 +1,16 @@
 #!/usr/bin/env python3
 
+from __future__ import division
+import numpy as np
+import pandas as pd
 
-def main():
-	import pandas as pd
-	import numpy as np
+
+def histogram(salaries):
+
 	from bokeh.plotting import show
 	from scipy.stats import norm
 	import scipy.stats as stats
 	from bokeh.io import export_svgs
-
-	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
-	data = pd.read_csv("data.csv")
-	data.sort_values("Total Pay & Benefits", axis=0, ascending=True, inplace=True, na_position='last')
-	salaries = data["Total Pay & Benefits"]
-	salaries = salaries[salaries.between(salaries.quantile(.05), salaries.quantile(.95))]
 
 	hist, edges = np.histogram(salaries, density=True, bins=100)
 	x = np.linspace(salaries.min(), salaries.max(), 200)
@@ -46,6 +43,31 @@ def make_plot(title, hist, edges, x, pdf):
 
 	return p
 
+# https://stackoverflow.com/a/17822210/1644554
+
+
+def expand(salaries, n):
+
+	hist, bins = np.histogram(salaries, density=True, bins=100)
+
+	bin_midpoints = bins[:-1] + np.diff(bins) / 2
+	cdf = np.cumsum(hist)
+	cdf = cdf / cdf[-1]
+	values = np.random.rand(n)
+	value_bins = np.searchsorted(cdf, values)
+	random_from_cdf = bin_midpoints[value_bins]
+
+	return random_from_cdf
+
 
 if __name__ == "__main__":
-	main()
+
+	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
+	data = pd.read_csv("data.csv")
+	# data.sort_values("Total Pay & Benefits", axis=0, ascending=True, inplace=True, na_position='last')
+	salaries = data["Total Pay & Benefits"]
+	# salaries = salaries[salaries.between(salaries.quantile(.05), salaries.quantile(.95))]
+
+	salaries = expand(salaries, 10**6)
+
+	histogram(salaries)
