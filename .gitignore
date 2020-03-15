@@ -4,3 +4,9 @@ packages
 .vs
 *.csproj.user
 *.pfx
+*.csv
+*.html
+*.svg
+
+output/*
+!output/.gitkeep

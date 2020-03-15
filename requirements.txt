@@ -1,0 +1,7 @@
+mysql-connector-python
+cx_Oracle
+pandas
+bokeh
+numpy
+scipy
+selenium
