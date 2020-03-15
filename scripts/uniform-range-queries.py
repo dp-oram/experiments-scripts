@@ -128,12 +128,12 @@ def runLoadsMySQL(data, queries, engine):
 		CREATE TABLE IF NOT EXISTS salaries (
 			fullname VARCHAR(100),		# Employee Name
 			jobtitle VARCHAR(100),		# Job Title
-			salary FLOAT,				# Base Pay
-			overtimepay FLOAT,			# Overtime Pay
-			other FLOAT,				# Other Pay
-			benefits FLOAT NULL,		# Benefits
-			total FLOAT,				# Total Pay
-			totalPlusBenefits FLOAT,	# Total Pay & Benefits
+			salary DOUBLE,				# Base Pay
+			overtimepay DOUBLE,			# Overtime Pay
+			other DOUBLE,				# Other Pay
+			benefits DOUBLE NULL,		# Benefits
+			total DOUBLE,				# Total Pay
+			totalPlusBenefits DOUBLE,	# Total Pay & Benefits
 			year INT,					# Year
 			notes VARCHAR(150) NULL,	# Notes
 			agency VARCHAR(100),		# Agency
@@ -281,9 +281,9 @@ For {result["engine"]}:
 	Seed: {result["seed"]}
 	Overheads:
 		(re)creting schema: {int(result["createSchema"] * 1000)} ms
-		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"]} ms per record
-		running queries: {int(result["runQueries"] * 1000)} ms / {int(result["runQueries"] * 1000) / result["querySize"]} ms per query
-		query time per return record: {1000 * sumOverKey("overhead") / sumOverKey("resultSize") if not allQueriesMiss else 0:.3f} ms {"! All queries returned 0 records !" if allQueriesMiss else ""}
+		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"] :.3f} ms per record
+		running queries: {int(result["runQueries"] * 1000)} ms / {int(result["runQueries"] * 1000) / result["querySize"] :.3f} ms per query
+		query time per returned record: {1000 * sumOverKey("overhead") / sumOverKey("resultSize") if not allQueriesMiss else 0:.3f} ms {"! All queries returned 0 records !" if allQueriesMiss else ""}
 	Average results per query: {reduce(lambda a, b: a + b, map(lambda x: x["resultSize"], result["queries"])) / len(result["queries"])}
 	Queries with empty result: {len(list(filter(lambda x: x["resultSize"] == 0, result["queries"])))}
 	Database size at the end: {result["dbSize"]} bytes
