@@ -14,7 +14,22 @@ ENGINE=kalepso
 {
 	for size in 1 10 50 100 200 500 1000
 	do
+		orams=0
+		if [ $size -ge 200 ]
+		then
+			orams=16
+		elif [ $size -ge 50 ]
+		then
+			orams=8
+		else
+			orams=4
+		fi
+
 		cd $CWD/../../core/
+
+		echo "" >> ./kalepsoDocker/kalepso.env
+		echo "# for size ${size} and orams ${oram}" >> ./kalepsoDocker/kalepso.env
+		echo "ENV_NOOFORAMS=${orams}" >> ./kalepsoDocker/kalepso.env
 		echo "ENV_MAXBLOCKS=${size}005" >> ./kalepsoDocker/kalepso.env
 
 		./start-docker-compose.sh "-d"
