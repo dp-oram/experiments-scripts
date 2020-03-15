@@ -7,3 +7,6 @@ packages
 *.csv
 *.html
 *.svg
+
+output/*
+!output/.gitkeep

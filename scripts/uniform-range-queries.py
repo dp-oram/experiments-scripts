@@ -4,7 +4,8 @@ import random
 import time
 import math
 from enum import Enum, auto
-
+import logging
+import json
 
 class Engine(Enum):
 	kalepso = 3306
@@ -22,22 +23,21 @@ class Engine(Enum):
 		except KeyError:
 			raise ValueError()
 
-
 def parse():
 	import argparse
 
 	inputSizeDefault = 1000
 	inputSizeMin = 100
-	inputSizeMax = 247000
-	
-	rangeSizeDefault = 10
-	rangeSizeMin = 2
-	rangeSizeMax = 1000
+	inputSizeMax = 15*10**5
+
+	rangeSizeDefault = 1000
+	rangeSizeMin = 100
+	rangeSizeMax = 5000
 
 	def argcheckInputSize(value):
 		number = int(value)
-		if number < inputSizeMin or number > inputSizeMax:
-			raise argparse.ArgumentTypeError(f"Input size must be {inputSizeMin} to {inputSizeMax}. Given {number}")
+		if (number < inputSizeMin or number > inputSizeMax) and number != -1:
+			raise argparse.ArgumentTypeError(f"Input size must be {inputSizeMin} to {inputSizeMax}, or -1. Given {number}")
 		return number
 
 	def argcheckInputMax(value):
@@ -54,15 +54,22 @@ def parse():
 
 	parser = argparse.ArgumentParser(description="Run simple uniform range queries on Kalepso.")
 
-	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}]")
+	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}], or -1 for using all data from CSV.")
 	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=argcheckInputSize, required=False, default=int(inputSizeDefault / 10), help=f"The number of queries [{inputSizeMin} - {inputSizeMax}]")
-	parser.add_argument("--range", dest="range", metavar="range-size", type=argcheckRange, required=False, default=10, help=f"The range size [{rangeSizeMin} - {rangeSizeMax}]")
+	parser.add_argument("--range", dest="range", metavar="range-size", type=argcheckRange, required=False, default=1000, help=f"The range size [{rangeSizeMin} - {rangeSizeMax}]")
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
+	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
 	parser.add_argument('--engine', dest="engine", metavar="engine", type=Engine.valueForParse, choices=list(Engine), required=True, help="Engine to run benchmark against")
 
 	args = parser.parse_args()
+
+	logging.basicConfig(
+		level=logging.DEBUG if args.verbose else logging.INFO,
+		format='%(asctime)s %(levelname)-8s %(message)s',
+		datefmt='%a, %d %b %Y %H:%M:%S',
+	)
 
 	random.seed(args.seed)
 
@@ -72,28 +79,42 @@ def parse():
 def generateLoads(dataSize, queryRange, queriesSize):
 	import pandas as pd
 
-	data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
-	# data = pd.read_csv("data.csv")
-	
-	sampled = data.sample(frac = float(dataSize) / len(data.index))
+	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
+	data = pd.read_csv("extended.csv")
+
+	if dataSize != -1:
+		data = data.sample(frac = float(dataSize) / len(data.index))
 
 	queries = []
-	
-	for i in range(1, queriesSize):
-		left = random.randint(0, int(sampled["Total Pay & Benefits"].max()) - queryRange)
+
+	for i in range(0, queriesSize):
+		left = random.randint(0, int(data["Total Pay & Benefits"].max()) - queryRange)
 		queries += [(left, left + queryRange)]
 
-	return sampled, queries
+	logging.debug("Generated %d datapoints and %d queries", len(data), len(queries))
 
-def runLoadsMySQL(data, queries, port):
+	return data, queries
+
+def runLoadsMySQL(data, queries, engine):
 	import mysql.connector as mysql
+
+	result = {
+		"started": time.time(),
+		"dataSize": len(data),
+		"querySize": len(queries),
+		"engine": f"{engine}"
+	}
 
 	db = mysql.connect(
 		host="localhost",
 		user="root",
-		port=port,
+		port=engine.value,
 		passwd="kalepso"
 	)
+
+	logging.debug("Connected to DB over port %d", engine.value)
+
+	result["createSchema"] = time.time()
 
 	cursor = db.cursor()
 	cursor.execute("CREATE DATABASE IF NOT EXISTS CA_public_employees_salaries_2019")
@@ -113,7 +134,7 @@ def runLoadsMySQL(data, queries, port):
 			notes VARCHAR(150) NULL,	# Notes
 			agency VARCHAR(100),		# Agency
 			status VARCHAR(30),			# Status
-			
+
 			INDEX totalPlusBenefitsIndex (totalPlusBenefits)
 		)
 	""")
@@ -121,12 +142,16 @@ def runLoadsMySQL(data, queries, port):
 
 	db.commit()
 
-	init = time.time()
+	result["createSchema"] = time.time() - result["createSchema"]
+
+	logging.debug("(re)Created scheme")
+
+	result["insertData"] = time.time()
 
 	insert = """
-		INSERT INTO salaries 
-			(fullname, jobtitle, salary, overtimepay, other, benefits, total, totalPlusBenefits, year, notes, agency, status) 
-		VALUES 
+		INSERT INTO salaries
+			(fullname, jobtitle, salary, overtimepay, other, benefits, total, totalPlusBenefits, year, notes, agency, status)
+		VALUES
 			(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 	"""
 	for index, record in data.iterrows():
@@ -149,15 +174,29 @@ def runLoadsMySQL(data, queries, port):
 		)
 		db.commit()
 
-	inserted = time.time()
+	result["insertData"] = time.time() - result["insertData"]
+
+	logging.debug("Inserted %d records", len(data))
+
+	result["runQueries"] = time.time()
+	result["queries"] = []
 
 	query = "SELECT * FROM salaries WHERE totalPlusBenefits BETWEEN %s AND %s"
 	for rangeQuery in queries:
+		start = time.time()
+
 		cursor.execute(query, rangeQuery)
 		records = cursor.fetchall()
 
-	queried = time.time()
-	
+		result["queries"] += [{
+			"overhead": time.time() - start,
+			"resultSize": len(records)
+		}]
+
+	result["runQueries"] = time.time() - result["runQueries"]
+
+	logging.debug("Completed %d queries", len(queries))
+
 	sizeQuery = """
 		SELECT
 			ROUND((DATA_LENGTH + INDEX_LENGTH)) AS `Size (B)`
@@ -173,9 +212,9 @@ def runLoadsMySQL(data, queries, port):
 	"""
 
 	cursor.execute(sizeQuery)
-	size = int(cursor.fetchall()[0][0])
+	result["dbSize"] = int(cursor.fetchall()[0][0])
 
-	return inserted - init, queried - inserted, size
+	return result
 
 
 def runLoadsOracle(data, queries, port):
@@ -221,6 +260,23 @@ def generateMSSQLLoad(data, queries):
 	for query in queries:
 		print(f"{query[0]} {query[1]}")
 
+def resultToString(result):
+	sumOverKey = lambda key: float(sum(map(lambda query: query[key], result["queries"])))
+
+	allQueriesMiss = sumOverKey("resultSize") == 0
+
+	return f"""
+For {result["engine"]}:
+	Started on {time.strftime("%m/%d/%Y %H:%M:%S", time.gmtime(result["started"]))}
+	Data size: {result["dataSize"]}
+	Query size: {result["querySize"]}
+	Overheads:
+		(re)creting schema: {int(result["createSchema"] * 1000)} ms
+		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"]} ms per record
+		running queries: {int(result["runQueries"] * 1000)} ms / {int(result["runQueries"] * 1000) / result["querySize"]} ms per query
+		query time per return record: {1000 * sumOverKey("overhead") / sumOverKey("resultSize") if not allQueriesMiss else 0:.3f} ms {"! All queries returned 0 records !" if allQueriesMiss else ""}
+	Database size at the end: {result["dbSize"]} bytes
+"""
 
 if __name__ == "__main__":
 
@@ -231,7 +287,12 @@ if __name__ == "__main__":
 		generateMSSQLLoad(data, queries)
 	else:
 		if engine == Engine.kalepso or engine == Engine.mariadb:
-			insertionTime, queryTime, tableSize = runLoadsMySQL(data, queries, engine.value)
+			result = runLoadsMySQL(data, queries, engine)
 		else:
 			insertionTime, queryTime, tableSize = runLoadsOracle(data, queries, engine.value)
-		print(f"For {engine}: inserted in {int(insertionTime * 1000)} ms, queries in {int(queryTime * 1000)} ms, database size is {tableSize} bytes")
+
+		logging.info(resultToString(result))
+		jsonFile = f"../output/{time.strftime('%m-%d-%Y--%H-%M-%S', time.gmtime(result['started']))}.json"
+		with open(jsonFile, 'w') as outfile:
+			json.dump(result, outfile)
+		logging.debug(f"JSON dumped at {jsonFile}")
