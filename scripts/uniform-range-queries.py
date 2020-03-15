@@ -6,6 +6,7 @@ import math
 from enum import Enum, auto
 import logging
 import json
+import numpy as np
 
 class Engine(Enum):
 	kalepso = 3306
@@ -61,6 +62,8 @@ def parse():
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
+	parser.add_argument("--epsilon", dest="epsilon", metavar="epsilon", type=int, default=10, required=False, help="Epsilon parameter used to run kalepso (needed only to name log file)")
+
 	parser.add_argument('--engine', dest="engine", metavar="engine", type=Engine.valueForParse, choices=list(Engine), required=True, help="Engine to run benchmark against")
 
 	args = parser.parse_args()
@@ -72,19 +75,19 @@ def parse():
 	)
 
 	random.seed(args.seed)
+	np.random.seed(args.seed+1)
 
-	return args.size, args.range, args.queries, args.engine
+	return args.size, args.range, args.queries, args.engine, args.seed, args.epsilon
 
 
 def generateLoads(dataSize, queryRange, queriesSize):
 	import pandas as pd
-	import numpy as np
 
 	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
 	data = pd.read_csv("extended.csv")
 
-	if dataSize != -1:
-		data = data.sample(frac = float(dataSize) / len(data.index))
+	if dataSize != -1 and dataSize < len(data.index):
+		data = data.sample(frac = float(dataSize) / len(data.index), random_state=random.randrange(4*10**6))
 
 	# sample queries from the same distribution
 
@@ -280,6 +283,8 @@ For {result["engine"]}:
 	Started on {time.strftime("%m/%d/%Y %H:%M:%S", time.gmtime(result["started"]))}
 	Data size: {result["dataSize"]}
 	Query size: {result["querySize"]}
+	Epsilon: {result["epsilon"]}
+	Seed: {result["seed"]}
 	Overheads:
 		(re)creting schema: {int(result["createSchema"] * 1000)} ms
 		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"]} ms per record
@@ -292,7 +297,7 @@ For {result["engine"]}:
 
 if __name__ == "__main__":
 
-	dataSize, queryRange, queriesSize, engine = parse()
+	dataSize, queryRange, queriesSize, engine, seed, epsilon = parse()
 	data, queries = generateLoads(dataSize, queryRange, queriesSize)
 
 	if engine == Engine.microsoft:
@@ -303,8 +308,10 @@ if __name__ == "__main__":
 		else:
 			insertionTime, queryTime, tableSize = runLoadsOracle(data, queries, engine.value)
 
+		result["epsilon"] = epsilon
+		result["seed"] = seed
 		logging.info(resultToString(result))
-		jsonFile = f"../output/{time.strftime('%m-%d-%Y--%H-%M-%S', time.gmtime(result['started']))}.json"
+		jsonFile = f"../output/{result['engine']}-{dataSize}-{epsilon}-{seed}-{time.strftime('%m-%d-%Y--%H-%M-%S', time.gmtime(result['started']))}.json"
 		with open(jsonFile, 'w') as outfile:
 			json.dump(result, outfile)
 		logging.debug(f"JSON dumped at {jsonFile}")
