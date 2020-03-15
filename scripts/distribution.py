@@ -7,6 +7,7 @@ import math
 import string
 import random
 
+
 def histogram(salaries, filename="plot"):
 
 	from bokeh.plotting import show
@@ -45,6 +46,7 @@ def make_plot(title, hist, edges, x, pdf):
 
 	return p
 
+
 def expand(salaries, n, bins=10000):
 
 	hist, bins = np.histogram(salaries, density=False, bins=bins)
@@ -53,7 +55,7 @@ def expand(salaries, n, bins=10000):
 	newBins = np.array([])
 
 	for i in range(len(hist)):
-		newBins = np.append((bins[i+1] - bins[i]) * np.random.rand(int(coefficient * hist[i])) + bins[i], newBins)
+		newBins = np.append((bins[i + 1] - bins[i]) * np.random.rand(int(coefficient * hist[i])) + bins[i], newBins)
 
 	return newBins
 
@@ -83,9 +85,7 @@ def addPayload(salaries, sample):
 			random.uniform(0.0, 150000.0),
 			random.uniform(0.0, 150000.0),
 			random.uniform(0.0, 150000.0),
-			random.uniform(0.0, 150000.0),
-			salary,
-			2020,
+			random.uniform(0.0, 150000.0), salary, 2020,
 			randomString(notesLength),
 			randomString(agencyLength),
 			randomString(statusLength)

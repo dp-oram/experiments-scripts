@@ -8,6 +8,7 @@ import logging
 import json
 import numpy as np
 
+
 class Engine(Enum):
 	kalepso = 3306
 	mariadb = 3307
@@ -24,12 +25,13 @@ class Engine(Enum):
 		except KeyError:
 			raise ValueError()
 
+
 def parse():
 	import argparse
 
 	inputSizeDefault = 1000
 	inputSizeMin = 100
-	inputSizeMax = 15*10**5
+	inputSizeMax = 15 * 10**5
 
 	rangeSizeDefault = 1000
 	rangeSizeMin = 10
@@ -75,7 +77,7 @@ def parse():
 	)
 
 	random.seed(args.seed)
-	np.random.seed(args.seed+1)
+	np.random.seed(args.seed + 1)
 
 	return args.size, args.range, args.queries, args.engine, args.seed, args.epsilon
 
@@ -87,7 +89,7 @@ def generateLoads(dataSize, queryRange, queriesSize):
 	data = pd.read_csv("extended.csv")
 
 	if dataSize != -1 and dataSize < len(data.index):
-		data = data.sample(frac = float(dataSize) / len(data.index), random_state=random.randrange(4*10**6))
+		data = data.sample(frac=float(dataSize) / len(data.index), random_state=random.randrange(4 * 10**6))
 
 	# sample queries from the same distribution
 
@@ -99,29 +101,20 @@ def generateLoads(dataSize, queryRange, queriesSize):
 	queries = []
 	for r in uniform:
 		leftBin = np.argwhere(cdf == min(cdf[(cdf - r) > 0]))[0][0]
-		left = (bins[leftBin+1] - bins[leftBin]) * np.random.rand() + bins[leftBin]
+		left = (bins[leftBin + 1] - bins[leftBin]) * np.random.rand() + bins[leftBin]
 		queries += [(left, left + queryRange)]
 
 	logging.debug("Generated %d datapoints and %d queries", len(data), len(queries))
 
 	return data, queries
 
+
 def runLoadsMySQL(data, queries, engine):
 	import mysql.connector as mysql
 
-	result = {
-		"started": time.time(),
-		"dataSize": len(data),
-		"querySize": len(queries),
-		"engine": f"{engine}"
-	}
+	result = {"started": time.time(), "dataSize": len(data), "querySize": len(queries), "engine": f"{engine}"}
 
-	db = mysql.connect(
-		host="localhost",
-		user="root",
-		port=engine.value,
-		passwd="kalepso"
-	)
+	db = mysql.connect(host="localhost", user="root", port=engine.value, passwd="kalepso")
 
 	logging.debug("Connected to DB over port %d", engine.value)
 
@@ -166,6 +159,7 @@ def runLoadsMySQL(data, queries, engine):
 			(%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
 	"""
 	for index, record in data.iterrows():
+		# yapf: disable
 		cursor.execute(
 			insert,
 			(
@@ -183,6 +177,8 @@ def runLoadsMySQL(data, queries, engine):
 				"" if math.isnan(record["Status"]) else record["Status"]
 			)
 		)
+		# yapf: enable
+
 		db.commit()
 
 	result["insertData"] = time.time() - result["insertData"]
@@ -199,10 +195,7 @@ def runLoadsMySQL(data, queries, engine):
 		cursor.execute(query, rangeQuery)
 		records = cursor.fetchall()
 
-		result["queries"] += [{
-			"overhead": time.time() - start,
-			"resultSize": len(records)
-		}]
+		result["queries"] += [{"overhead": time.time() - start, "resultSize": len(records)}]
 
 	result["runQueries"] = time.time() - result["runQueries"]
 
@@ -271,6 +264,7 @@ def generateMSSQLLoad(data, queries):
 	for query in queries:
 		print(f"{query[0]} {query[1]}")
 
+
 def resultToString(result):
 	from functools import reduce
 
@@ -294,6 +288,7 @@ For {result["engine"]}:
 	Queries with empty result: {len(list(filter(lambda x: x["resultSize"] == 0, result["queries"])))}
 	Database size at the end: {result["dbSize"]} bytes
 """
+
 
 if __name__ == "__main__":
 
