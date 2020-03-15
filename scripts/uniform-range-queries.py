@@ -31,8 +31,8 @@ def parse():
 	inputSizeMax = 15*10**5
 
 	rangeSizeDefault = 1000
-	rangeSizeMin = 100
-	rangeSizeMax = 5000
+	rangeSizeMin = 10
+	rangeSizeMax = 50000
 
 	def argcheckInputSize(value):
 		number = int(value)
@@ -48,7 +48,7 @@ def parse():
 
 	def argcheckRange(value):
 		number = int(value)
-		if number < 2 or number > 1000:
+		if number < rangeSizeMin or number > rangeSizeMax:
 			raise argparse.ArgumentTypeError(f"Input / queries size must be {rangeSizeMin} to {rangeSizeMax}. Given {number}")
 		return number
 
@@ -78,6 +78,7 @@ def parse():
 
 def generateLoads(dataSize, queryRange, queriesSize):
 	import pandas as pd
+	import numpy as np
 
 	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
 	data = pd.read_csv("extended.csv")
@@ -85,10 +86,17 @@ def generateLoads(dataSize, queryRange, queriesSize):
 	if dataSize != -1:
 		data = data.sample(frac = float(dataSize) / len(data.index))
 
-	queries = []
+	# sample queries from the same distribution
 
-	for i in range(0, queriesSize):
-		left = random.randint(0, int(data["Total Pay & Benefits"].max()) - queryRange)
+	hist, bins = np.histogram(data["Total Pay & Benefits"], density=True, bins=max(100, int(len(data) / 100)))
+	cdf = np.cumsum(hist)
+	cdf = cdf / cdf[-1]
+	uniform = np.random.rand(queriesSize)
+
+	queries = []
+	for r in uniform:
+		leftBin = np.argwhere(cdf == min(cdf[(cdf - r) > 0]))[0][0]
+		left = (bins[leftBin+1] - bins[leftBin]) * np.random.rand() + bins[leftBin]
 		queries += [(left, left + queryRange)]
 
 	logging.debug("Generated %d datapoints and %d queries", len(data), len(queries))
@@ -261,6 +269,8 @@ def generateMSSQLLoad(data, queries):
 		print(f"{query[0]} {query[1]}")
 
 def resultToString(result):
+	from functools import reduce
+
 	sumOverKey = lambda key: float(sum(map(lambda query: query[key], result["queries"])))
 
 	allQueriesMiss = sumOverKey("resultSize") == 0
@@ -275,6 +285,8 @@ For {result["engine"]}:
 		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"]} ms per record
 		running queries: {int(result["runQueries"] * 1000)} ms / {int(result["runQueries"] * 1000) / result["querySize"]} ms per query
 		query time per return record: {1000 * sumOverKey("overhead") / sumOverKey("resultSize") if not allQueriesMiss else 0:.3f} ms {"! All queries returned 0 records !" if allQueriesMiss else ""}
+	Average results per query: {reduce(lambda a, b: a + b, map(lambda x: x["resultSize"], result["queries"])) / len(result["queries"])}
+	Queries with empty result: {len(list(filter(lambda x: x["resultSize"] == 0, result["queries"])))}
 	Database size at the end: {result["dbSize"]} bytes
 """
 

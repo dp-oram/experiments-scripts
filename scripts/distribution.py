@@ -7,7 +7,7 @@ import math
 import string
 import random
 
-def histogram(salaries):
+def histogram(salaries, filename="plot"):
 
 	from bokeh.plotting import show
 	from scipy.stats import norm
@@ -25,7 +25,7 @@ def histogram(salaries):
 	show(plot)
 
 	plot.output_backend = "svg"
-	export_svgs(plot, filename="plot.svg")
+	export_svgs(plot, filename=f"{filename}.svg")
 
 
 def make_plot(title, hist, edges, x, pdf):
@@ -45,25 +45,21 @@ def make_plot(title, hist, edges, x, pdf):
 
 	return p
 
-# https://stackoverflow.com/a/17822210/1644554
+def expand(salaries, n, bins=10000):
 
+	hist, bins = np.histogram(salaries, density=False, bins=bins)
+	coefficient = float(n) / float(len(salaries))
 
-def expand(salaries, n):
+	newBins = np.array([])
 
-	hist, bins = np.histogram(salaries, density=True, bins=100)
+	for i in range(len(hist)):
+		newBins = np.append((bins[i+1] - bins[i]) * np.random.rand(int(coefficient * hist[i])) + bins[i], newBins)
 
-	bin_midpoints = bins[:-1] + np.diff(bins) / 2
-	cdf = np.cumsum(hist)
-	cdf = cdf / cdf[-1]
-	values = np.random.rand(n)
-	value_bins = np.searchsorted(cdf, values)
-	random_from_cdf = bin_midpoints[value_bins]
-
-	return random_from_cdf
+	return newBins
 
 
 def addPayload(salaries, sample):
-	
+
 	yield ["Employee Name", "Job Title", "Base Pay", "Overtime Pay", "Other Pay", "Benefits", "Total Pay", "Total Pay & Benefits", "Year", "Notes", "Agency", "Status"]
 
 	def stringLength(key):
@@ -78,7 +74,7 @@ def addPayload(salaries, sample):
 	notesLength = stringLength("Notes")
 	agencyLength = stringLength("Agency")
 	statusLength = stringLength("Status")
-	
+
 	for salary in salaries:
 		yield [
 			randomString(nameLength),
@@ -104,11 +100,13 @@ if __name__ == "__main__":
 	# data.sort_values("Total Pay & Benefits", axis=0, ascending=True, inplace=True, na_position='last')
 	salaries = data["Total Pay & Benefits"]
 	# salaries = salaries[salaries.between(salaries.quantile(.05), salaries.quantile(.95))]
-	
-	# histogram(salaries)
 
-	salaries = expand(salaries, 10**6)
-	
+	# histogram(salaries, filename="original")
+
+	salaries = expand(salaries, 10**6, bins=10**4)
+
+	# histogram(salaries, filename="expanded")
+
 	with open("extended.csv", "w") as out:
 		for record in addPayload(salaries, data):
 			out.write(','.join(map(str, record)) + "\n")
