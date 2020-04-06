@@ -94,8 +94,8 @@ def addPayload(salaries, sample):
 
 if __name__ == "__main__":
 
-	# data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
-	data = pd.read_csv("data.csv")
+	data = pd.read_csv("https://gist.githubusercontent.com/dbogatov/a192d00d72de02f188c5268ea1bbf25b/raw/b1e7ea9e058e7906e0045b29ad75a5f201bd4f57/state-of-california-2019.csv")
+	# data = pd.read_csv("data.csv")
 	# data = pd.read_csv("extended.csv")
 	# data.sort_values("Total Pay & Benefits", axis=0, ascending=True, inplace=True, na_position='last')
 	salaries = data["Total Pay & Benefits"]

@@ -14,6 +14,7 @@ class Engine(Enum):
 	mariadb = 3307
 	oracle = 1521
 	microsoft = 1433
+	none = 0
 
 	def __str__(self):
 		return self.name
@@ -280,7 +281,7 @@ For {result["engine"]}:
 	Epsilon: {result["epsilon"]}
 	Seed: {result["seed"]}
 	Overheads:
-		(re)creting schema: {int(result["createSchema"] * 1000)} ms
+		(re)creating schema: {int(result["createSchema"] * 1000)} ms
 		inserting data: {int(result["insertData"] * 1000)} ms / {int(result["insertData"] * 1000) / result["dataSize"] :.3f} ms per record
 		running queries: {int(result["runQueries"] * 1000)} ms / {int(result["runQueries"] * 1000) / result["querySize"] :.3f} ms per query
 		query time per returned record: {1000 * sumOverKey("overhead") / sumOverKey("resultSize") if not allQueriesMiss else 0:.3f} ms {"! All queries returned 0 records !" if allQueriesMiss else ""}
@@ -289,13 +290,21 @@ For {result["engine"]}:
 	Database size at the end: {result["dbSize"]} bytes
 """
 
+def storeLoads(data, queries):
+	data.to_csv("data.csv", index=False, header=False)
+	with open("query.csv", "w") as out:
+		for query in queries:
+			out.write(f"{query[0]},{query[1]}\n")
 
 if __name__ == "__main__":
 
 	dataSize, queryRange, queriesSize, engine, seed, epsilon = parse()
 	data, queries = generateLoads(dataSize, queryRange, queriesSize)
 
-	if engine == Engine.microsoft:
+	if engine == Engine.none:
+		logging.debug("Only generating and storing loads")
+		storeLoads(data, queries)
+	elif engine == Engine.microsoft:
 		generateMSSQLLoad(data, queries)
 	else:
 		if engine == Engine.kalepso or engine == Engine.mariadb:
