@@ -30,37 +30,11 @@ class Engine(Enum):
 def parse():
 	import argparse
 
-	inputSizeDefault = 1000
-	inputSizeMin = 100
-	inputSizeMax = 15 * 10**5
+	parser = argparse.ArgumentParser(description="Run or generate simple uniform data nd range queries.")
 
-	rangeSizeDefault = 1000
-	rangeSizeMin = 10
-	rangeSizeMax = 50000
-
-	def argcheckInputSize(value):
-		number = int(value)
-		if (number < inputSizeMin or number > inputSizeMax) and number != -1:
-			raise argparse.ArgumentTypeError(f"Input size must be {inputSizeMin} to {inputSizeMax}, or -1. Given {number}")
-		return number
-
-	def argcheckInputMax(value):
-		number = int(value)
-		if number <= 0:
-			raise argparse.ArgumentTypeError(f"Input max must be above 0. Given {number}")
-		return number
-
-	def argcheckRange(value):
-		number = int(value)
-		if number < rangeSizeMin or number > rangeSizeMax:
-			raise argparse.ArgumentTypeError(f"Input / queries size must be {rangeSizeMin} to {rangeSizeMax}. Given {number}")
-		return number
-
-	parser = argparse.ArgumentParser(description="Run simple uniform range queries on Kalepso.")
-
-	parser.add_argument("--size", dest="size", metavar="input-size", type=argcheckInputSize, required=False, default=inputSizeDefault, help=f"The size of data [{inputSizeMin} - {inputSizeMax}], or -1 for using all data from CSV.")
-	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=argcheckInputSize, required=False, default=int(inputSizeDefault / 10), help=f"The number of queries [{inputSizeMin} - {inputSizeMax}]")
-	parser.add_argument("--range", dest="range", metavar="range-size", type=argcheckRange, required=False, default=1000, help=f"The range size [{rangeSizeMin} - {rangeSizeMax}]")
+	parser.add_argument("--size", dest="size", metavar="input-size", required=False, default=1000, help=f"The size of data, or -1 for using all data from CSV.")
+	parser.add_argument("--queries", dest="queries", metavar="queries-size", required=False, default=100, help=f"The number of queries")
+	parser.add_argument("--range", dest="range", metavar="range-size", required=False, default=500, help=f"The range size")
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
