@@ -32,9 +32,9 @@ def parse():
 
 	parser = argparse.ArgumentParser(description="Run or generate simple uniform data nd range queries.")
 
-	parser.add_argument("--size", dest="size", metavar="input-size", required=False, default=1000, help=f"The size of data, or -1 for using all data from CSV.")
-	parser.add_argument("--queries", dest="queries", metavar="queries-size", required=False, default=100, help=f"The number of queries")
-	parser.add_argument("--range", dest="range", metavar="range-size", required=False, default=500, help=f"The range size")
+	parser.add_argument("--size", dest="size", metavar="input-size", type=int, required=False, default=1000, help=f"The size of data, or -1 for using all data from CSV.")
+	parser.add_argument("--queries", dest="queries", metavar="queries-size", type=int, required=False, default=100, help=f"The number of queries")
+	parser.add_argument("--range", dest="range", metavar="range-size", type=int, required=False, default=500, help=f"The range size")
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
