@@ -1,7 +1,5 @@
 # Experiments
 
-> Assumes Kalepso running locally on some port (e.g. 3306)
-
 <details>
 <summary>If Catalina compains about SSL...</summary>
 
