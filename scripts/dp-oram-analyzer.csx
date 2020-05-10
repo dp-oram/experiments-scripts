@@ -1,32 +1,90 @@
 #!/usr/bin/env dotnet script
 
-#r "nuget: Stateless, 4.2.1"
+using System.Text.RegularExpressions;
 
-// Copied from: https://github.com/dotnet-state-machine/stateless/blob/dev/example/OnOffExample/Program.cs
-using Stateless;
+var SEED = new Random().Next();
 
-const string on = "On";
-const string off = "Off";
-const char space = ' ';
-
-// Instantiate a new state machine in the 'off' state
-var onOffSwitch = new StateMachine<string, char>(off);
-
-// Configure state machine with the Configure method, supplying the state to be configured as a parameter
-onOffSwitch.Configure(off).Permit(space, on);
-onOffSwitch.Configure(on).Permit(space, off);
-
-Console.WriteLine("Press <space> to toggle the switch. Any other key will exit the program.");
-
-while (true)
+if (Args.Count >= 2)
 {
-	Console.WriteLine("Switch is in state: " + onOffSwitch.State);
-	var pressed = Console.ReadKey(true).KeyChar;
+	SEED = Int32.Parse(Args[1]);
+}
 
-	// Check if user wants to exit
-	if (pressed != space) break;
+async Task<(int real, int padding, int noise, int total)> RunProcessAsync(Dictionary<string, string> parameters)
+{
+	var directory = Path.Combine(Directory.GetCurrentDirectory(), "../../dp-oram/dp-oram");
 
-	// Use the Fire method with the trigger as payload to supply the state machine with an event.
-	// The state machine will react according to its configuration.
-	onOffSwitch.Fire(pressed);
+	ProcessStartInfo start = new ProcessStartInfo
+	{
+		FileName = Path.Combine(directory, "bin/main"),
+		Arguments = parameters.Aggregate("", (current, next) => current + $" --{next.Key} {next.Value}"),
+		UseShellExecute = false,
+		CreateNoWindow = true,
+		WorkingDirectory = directory,
+		RedirectStandardOutput = true,
+		RedirectStandardError = true
+	};
+
+	using (Process process = Process.Start(start))
+	{
+		using (StreamReader reader = process.StandardOutput)
+		{
+			string stderr = await process.StandardError.ReadToEndAsync();
+			string result = await reader.ReadToEndAsync();
+
+			if (string.IsNullOrEmpty(stderr) && process.ExitCode == 0)
+			{
+				// success
+				var regex = new Regex(@".; \((\d+)\+(\d+)\+(\d+)=(\d+)\) records per query");
+				var match = regex.Match(result);
+				if (match.Success)
+				{
+					return (
+						real: Int32.Parse(match.Groups[1].Value),
+						padding: Int32.Parse(match.Groups[2].Value),
+						noise: Int32.Parse(match.Groups[3].Value),
+						total: Int32.Parse(match.Groups[4].Value)
+					);
+				}
+			}
+
+			return default;
+		}
+	}
+}
+
+Console.WriteLine($"SEED: {SEED}");
+Console.WriteLine();
+
+Console.WriteLine($"{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}Results per ORAM (real+padding+noise=total)");
+Console.WriteLine();
+
+foreach (var n in new List<int> { 1, 2, 4, 8, 16, 32, 48, 64, 96 })
+{
+	foreach (var buckets in new List<int> { 16, 256, 4096, 65536, 1048576 })
+	{
+		foreach (var beta in new List<int> { 10, 15, 20, 25 })
+		{
+			foreach (var epsilon in new List<int> { 1, 5, 10, 20 })
+			{
+				var result = await RunProcessAsync(new Dictionary<string, string>{
+					{ "generateIndices", true.ToString() },
+					{ "readInputs", false.ToString() },
+					{ "parallel", true.ToString() },
+					{ "oramsNumber", n.ToString() },
+					{ "bucketsNumber", buckets.ToString() },
+					{ "virtualRequests", true.ToString() },
+					{ "beta", beta.ToString() },
+					{ "epsilon", epsilon.ToString() },
+					{ "count", 10000.ToString() },
+					{ "verbosity", "TRACE" },
+					{ "fileLogging", true.ToString() },
+					{ "seed", SEED.ToString() }
+				});
+
+				Console.WriteLine($"{n,-10}{buckets,-10}{$"2^{{-{beta}}}",-10}{epsilon,-10}{result.real} + {result.padding} + {result.noise} = {result.total}");
+			}
+		}
+
+		Console.WriteLine();
+	}
 }
