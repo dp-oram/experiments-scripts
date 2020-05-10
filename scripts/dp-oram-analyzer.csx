@@ -70,7 +70,7 @@ foreach (var n in new List<int> { 1, 2, 4, 8, 16, 32, 48, 64, 96 })
 			{
 				var result = await RunProcessAsync(new Dictionary<string, string>{
 					{ "generateIndices", true.ToString() },
-					{ "readInputs", false.ToString() },
+					{ "readInputs", true.ToString() },
 					{ "parallel", true.ToString() },
 					{ "oramsNumber", n.ToString() },
 					{ "bucketsNumber", buckets.ToString() },
