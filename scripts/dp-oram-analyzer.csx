@@ -26,6 +26,8 @@ async Task<(int real, int padding, int noise, int total)> RunProcessAsync(Dictio
 
 	using (Process process = Process.Start(start))
 	{
+		process.WaitForExit();
+
 		using (StreamReader reader = process.StandardOutput)
 		{
 			string stderr = await process.StandardError.ReadToEndAsync();
