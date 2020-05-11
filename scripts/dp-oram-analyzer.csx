@@ -57,7 +57,7 @@ public class Program
 		foreach (var n in new List<int> { 1, 2, 4, 8, 16, 32, 48, 64, 96 })
 		{
 			var tasks = new List<Task<(int bucket, int beta, int epsilon, string log)>>();
-			await simulate(n, 16, 20, 1); // generate indices first
+			var firstRun = false;
 
 			foreach (var buckets in new List<int> { 16, 256, 4096, 65536, 1048576 })
 			{
@@ -66,6 +66,13 @@ public class Program
 					foreach (var epsilon in new List<int> { 1 })
 					{
 						tasks.Add(Task.Run(async () => await simulate(n, buckets, beta, epsilon)));
+						// if it is a first simulation in a batch, we need to wait for it to complete,
+						// because it generates the files that other simulation rely on
+						if (!firstRun)
+						{
+							await Task.WhenAll(tasks);
+							firstRun = true;
+						}
 					}
 				}
 			}
