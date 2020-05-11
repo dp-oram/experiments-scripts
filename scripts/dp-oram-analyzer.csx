@@ -4,6 +4,7 @@
 
 using System.Text.RegularExpressions;
 using McMaster.Extensions.CommandLineUtils;
+using System.Threading;
 
 [Command(
 	Name = "dp-simulator",
@@ -22,6 +23,8 @@ public class Program
 
 	private async Task OnExecuteAsync()
 	{
+		var random = new Random(Seed);
+
 		Console.WriteLine($"Seed: {Seed}");
 		Console.WriteLine($"Count: {Count}");
 		Console.WriteLine();
@@ -65,7 +68,11 @@ public class Program
 				{
 					foreach (var epsilon in new List<int> { 1 })
 					{
-						tasks.Add(Task.Run(async () => await simulate(n, buckets, beta, epsilon)));
+						tasks.Add(Task.Run(async () =>
+						{
+							await Task.Delay(random.Next(0, 1000));
+							return await simulate(n, buckets, beta, epsilon);
+						}));
 						// if it is a first simulation in a batch, we need to wait for it to complete,
 						// because it generates the files that other simulation rely on
 						if (!firstRun)
@@ -101,11 +108,12 @@ public class Program
 	private async Task<(int real, int padding, int noise, int total)> RunProcessAsync(Dictionary<string, string> parameters)
 	{
 		var directory = Path.Combine(Directory.GetCurrentDirectory(), "../../dp-oram/dp-oram");
+		var paramString = parameters.Aggregate("", (current, next) => current + $" --{next.Key} {next.Value}");
 
 		ProcessStartInfo start = new ProcessStartInfo
 		{
 			FileName = Path.Combine(directory, "bin/main"),
-			Arguments = parameters.Aggregate("", (current, next) => current + $" --{next.Key} {next.Value}"),
+			Arguments = paramString,
 			UseShellExecute = false,
 			CreateNoWindow = true,
 			WorkingDirectory = directory,
@@ -136,6 +144,10 @@ public class Program
 							total: Int32.Parse(match.Groups[4].Value)
 						);
 					}
+				}
+				else
+				{
+					throw new Exception($"Execution failed for {paramString}");
 				}
 
 				return default;
