@@ -4,14 +4,10 @@
 
 using System.Text.RegularExpressions;
 using McMaster.Extensions.CommandLineUtils;
-// using System.ComponentModel.DataAnnotations;
 
 [Command(
 	Name = "dp-simulator",
 	Description = "Script to run DP-ORAM protocol of different parameters"
-// ShowInHelpText = true,
-// UnrecognizedArgumentHandling = McMaster.Extensions.CommandLineUtils.UnrecognizedArgumentHandling.Throw,
-// UsePagerForHelpText = false
 )]
 public class Program
 {
@@ -32,38 +28,54 @@ public class Program
 
 		DeleteSimulatorCache();
 
-		Console.WriteLine($"{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}Results per ORAM (real+padding+noise=total)");
+		Console.WriteLine($"{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss |"),-23}{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}Results per ORAM (real+padding+noise=total)");
 		Console.WriteLine();
 
-		// TODO parallel
+		Func<int, int, int, int, Task<(int bucket, int beta, int epsilon, string log)>> simulate =
+			async (int n, int buckets, int beta, int epsilon) =>
+			{
+				var result = await RunProcessAsync(new Dictionary<string, string>{
+					{ "generateIndices", false.ToString() },
+					{ "readInputs", (Count == 0).ToString() },
+					{ "parallel", true.ToString() },
+					{ "oramsNumber", n.ToString() },
+					{ "oramStorage", "InMemory" },
+					{ "bucketsNumber", buckets.ToString() },
+					{ "virtualRequests", true.ToString() },
+					{ "beta", beta.ToString() },
+					{ "epsilon", epsilon.ToString() },
+					{ "count", Count.ToString() },
+					{ "verbosity", "TRACE" },
+					{ "fileLogging", true.ToString() },
+					{ "seed", Seed.ToString() }
+				});
+
+				var logMessage = $"{n,-10}{buckets,-10}{$"2^{{-{beta}}}",-10}{epsilon,-10}{result.real / n} + {result.padding / n} + {result.noise / n} = {result.total / n}";
+				return (buckets, beta, epsilon, logMessage);
+			};
 
 		foreach (var n in new List<int> { 1, 2, 4, 8, 16, 32, 48, 64, 96 })
 		{
+			var tasks = new List<Task<(int bucket, int beta, int epsilon, string log)>>();
+			await simulate(n, 16, 20, 1); // generate indices first
+
 			foreach (var buckets in new List<int> { 16, 256, 4096, 65536, 1048576 })
 			{
 				foreach (var beta in new List<int> { 20 })
 				{
 					foreach (var epsilon in new List<int> { 1 })
 					{
-						var result = await RunProcessAsync(new Dictionary<string, string>{
-							{ "generateIndices", false.ToString() },
-							{ "readInputs", (Count == 0).ToString() },
-							{ "parallel", true.ToString() },
-							{ "oramsNumber", n.ToString() },
-							{ "oramStorage", "InMemory" },
-							{ "bucketsNumber", buckets.ToString() },
-							{ "virtualRequests", true.ToString() },
-							{ "beta", beta.ToString() },
-							{ "epsilon", epsilon.ToString() },
-							{ "count", Count.ToString() },
-							{ "verbosity", "TRACE" },
-							{ "fileLogging", true.ToString() },
-							{ "seed", Seed.ToString() }
-						});
-
-						Console.WriteLine($"{n,-10}{buckets,-10}{$"2^{{-{beta}}}",-10}{epsilon,-10}{result.real} + {result.padding} + {result.noise} = {result.total}");
+						tasks.Add(Task.Run(async () => await simulate(n, buckets, beta, epsilon)));
 					}
 				}
+			}
+
+			var results = await Task.WhenAll(tasks);
+			results.OrderBy(r => r.bucket).ThenBy(r => r.beta).ThenBy(r => r.epsilon);
+
+			foreach (var result in results)
+			{
+				Console.WriteLine($"{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss |"),-23}{result.log}");
 			}
 
 			Console.WriteLine();
