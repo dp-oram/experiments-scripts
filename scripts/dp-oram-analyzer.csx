@@ -31,11 +31,11 @@ public class Program
 
 		DeleteSimulatorCache();
 
-		Console.WriteLine($"{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss |"),-23}{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}Results per ORAM (real+padding+noise=total)");
+		Console.WriteLine($"{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss |"),-23}{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}{"gamma",-10}Results per ORAM (real+padding+noise=total)");
 		Console.WriteLine();
 
-		Func<int, int, int, int, Task<(int bucket, int beta, int epsilon, string log)>> simulate =
-			async (int n, int buckets, int beta, int epsilon) =>
+		Func<int, int, int, int, bool, Task<(int bucket, int beta, int epsilon, bool gamma, string log)>> simulate =
+			async (int n, int buckets, int beta, int epsilon, bool gamma) =>
 			{
 				var result = await RunProcessAsync(new Dictionary<string, string>{
 					{ "generateIndices", false.ToString() },
@@ -47,19 +47,20 @@ public class Program
 					{ "virtualRequests", true.ToString() },
 					{ "beta", beta.ToString() },
 					{ "epsilon", epsilon.ToString() },
+					{ "useGamma", gamma.ToString() },
 					{ "count", Count.ToString() },
 					{ "verbosity", "TRACE" },
 					{ "fileLogging", true.ToString() },
 					{ "seed", Seed.ToString() }
 				});
 
-				var logMessage = $"{n,-10}{buckets,-10}{$"2^{{-{beta}}}",-10}{epsilon,-10}{result.real / n} + {result.padding / n} + {result.noise / n} = {result.total / n}";
-				return (buckets, beta, epsilon, logMessage);
+				var logMessage = $"{n,-10}{buckets,-10}{$"2^{{-{beta}}}",-10}{epsilon,-10}{gamma,-10}{result.real / n} + {result.padding / n} + {result.noise / n} = {result.total / n}";
+				return (buckets, beta, epsilon, gamma, logMessage);
 			};
 
 		foreach (var n in new List<int> { 1, 2, 4, 8, 16, 32, 48, 64, 96 })
 		{
-			var tasks = new List<Task<(int bucket, int beta, int epsilon, string log)>>();
+			var tasks = new List<Task<(int bucket, int beta, int epsilon, bool gamma, string log)>>();
 			var firstRun = false;
 
 			foreach (var buckets in new List<int> { 16, 256, 4096, 65536, 1048576 })
@@ -68,24 +69,27 @@ public class Program
 				{
 					foreach (var epsilon in new List<int> { 1 })
 					{
-						tasks.Add(Task.Run(async () =>
+						foreach (var gamma in new List<bool> { false, true })
 						{
-							await Task.Delay(random.Next(0, 1000));
-							return await simulate(n, buckets, beta, epsilon);
-						}));
-						// if it is a first simulation in a batch, we need to wait for it to complete,
-						// because it generates the files that other simulation rely on
-						if (!firstRun)
-						{
-							await Task.WhenAll(tasks);
-							firstRun = true;
+							tasks.Add(Task.Run(async () =>
+							{
+								await Task.Delay(random.Next(0, 1000));
+								return await simulate(n, buckets, beta, epsilon, gamma);
+							}));
+							// if it is a first simulation in a batch, we need to wait for it to complete,
+							// because it generates the files that other simulation rely on
+							if (!firstRun)
+							{
+								await Task.WhenAll(tasks);
+								firstRun = true;
+							}
 						}
 					}
 				}
 			}
 
 			var results = await Task.WhenAll(tasks);
-			results.OrderBy(r => r.bucket).ThenBy(r => r.beta).ThenBy(r => r.epsilon);
+			results.OrderBy(r => r.bucket).ThenBy(r => r.beta).ThenBy(r => r.epsilon).ThenBy(r => r.gamma);
 
 			foreach (var result in results)
 			{
