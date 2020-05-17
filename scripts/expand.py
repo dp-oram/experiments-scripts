@@ -6,6 +6,31 @@ import pandas as pd
 import math
 import string
 import random
+import logging
+
+def parse():
+	import argparse
+
+	parser = argparse.ArgumentParser(description="Expand distribution")
+
+	parser.add_argument("--size", dest="size", metavar="output-size", type=int, required=False, default=10**6, help=f"The size of the expanded set.")
+	parser.add_argument("--bins", dest="bins", metavar="bins-number", type=int, required=False, default=10**4, help=f"The number of bins to use for histogram.")
+
+	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
+	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
+
+	args = parser.parse_args()
+
+	logging.basicConfig(
+		level=logging.DEBUG if args.verbose else logging.INFO,
+		format='%(asctime)s %(levelname)-8s %(message)s',
+		datefmt='%a, %d %b %Y %H:%M:%S',
+	)
+
+	random.seed(args.seed)
+	np.random.seed(args.seed + 1)
+
+	return args.size, args.bins
 
 
 def histogram(salaries, filename="plot"):
@@ -103,7 +128,9 @@ if __name__ == "__main__":
 
 	# histogram(salaries, filename="original")
 
-	salaries = expand(salaries, 10**6, bins=10**4)
+	size, bins = parse()
+
+	salaries = expand(salaries, size, bins=bins)
 
 	# histogram(salaries, filename="expanded")
 
