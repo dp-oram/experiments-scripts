@@ -16,6 +16,10 @@ def parse():
 	parser.add_argument("--size", dest="size", metavar="output-size", type=int, required=False, default=10**6, help=f"The size of the expanded set.")
 	parser.add_argument("--bins", dest="bins", metavar="bins-number", type=int, required=False, default=10**4, help=f"The number of bins to use for histogram.")
 
+	parser.add_argument("--uniform", dest="uniform", metavar="uniform", type=bool, required=False, default=False, help=f"Whether to ignore original distribution and generate uniform.")
+	parser.add_argument("--min", dest="min", metavar="min", type=int, required=False, default=0, help=f"Min element for uniform generation.")
+	parser.add_argument("--max", dest="max", metavar="max", type=int, required=False, default=10**6, help=f"Max element for uniform generation.")
+
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 
@@ -30,7 +34,7 @@ def parse():
 	random.seed(args.seed)
 	np.random.seed(args.seed + 1)
 
-	return args.size, args.bins
+	return args.size, args.bins, args.uniform, args.min, args.max
 
 
 def histogram(salaries, filename="plot"):
@@ -110,12 +114,16 @@ def addPayload(salaries, sample):
 			random.uniform(0.0, 150000.0),
 			random.uniform(0.0, 150000.0),
 			random.uniform(0.0, 150000.0),
-			random.uniform(0.0, 150000.0), salary, 2020,
+			random.uniform(0.0, 150000.0),
+			round(salary, 2),
+			2020,
 			randomString(notesLength),
 			randomString(agencyLength),
 			randomString(statusLength)
 		]
 
+def generateUniform(size, min, max):
+	return np.random.uniform(low=float(min), high=float(max), size=size)
 
 if __name__ == "__main__":
 
@@ -128,9 +136,12 @@ if __name__ == "__main__":
 
 	# histogram(salaries, filename="original")
 
-	size, bins = parse()
+	size, bins, uniform, min, max = parse()
 
-	salaries = expand(salaries, size, bins=bins)
+	if not uniform:
+		salaries = expand(salaries, size, bins=bins)
+	else:
+		salaries = generateUniform(size, min, max);
 
 	# histogram(salaries, filename="expanded")
 
