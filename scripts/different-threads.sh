@@ -16,7 +16,7 @@ do
 	# fi
 	echo "Running for $threads threads"
 	cd ../../dp-oram/dp-oram
-	./bin/main -g true -r true -p true -s inmemory -n $threads -b 0 --beta 20 --epsilon 1 --useGamma true --levels 0 -v trace
+	./bin/main -g true -r true -p true -s inmemory -n $threads -b 4096 --beta 20 --epsilon 1 --useGamma true --levels 0 -v trace
 done
 
 echo "Done!"
