@@ -164,22 +164,30 @@ if __name__ == "__main__":
 	size, bins, dataset, pums, _min, _max, crop, hist, ranges = parse()
 
 	if dataset == Dataset.CA:
-		logging.debug("Reading dataset")
+		logging.debug("Reading CA employees dataset")
 
 		index = pd.read_csv("../../datasets/state-of-california-2019.csv", usecols=["Total Pay & Benefits"], squeeze=True)
-
-		index = changeSize(index, size, bins=bins)
 	elif dataset == Dataset.UNIFORM:
+		logging.debug("Generating uniform dataset")
+
 		index = generateUniform(size, _min, _max)
 	elif dataset == Dataset.PUMS:
-		logging.debug("Reading dataset")
+		logging.debug(f"Reading PUMS ({pums}) dataset")
 
-		index = pd.read_csv(f"../../datasets/pums-{pums}.csv", usecols=["WAGP"], squeeze=True)
+		if pums == "us":
+			index = pd.concat((pd.read_csv(f"../../datasets/pums-{pums}-{i}.csv", usecols=["WAGP"], squeeze=True)) for i in range(1, 5))
+		else:
+			index = pd.read_csv(f"../../datasets/pums-{pums}.csv", usecols=["WAGP"], squeeze=True)
+
 		index = index[~np.isnan(index)]
-		index = changeSize(index, size, bins=bins)
 
 	if crop:
+		logging.debug(f"Cropping [{_min}, {_max}]")
 		index = index[(index >= _min) & (index <= _max)]
+
+	index = changeSize(index, size, bins=bins)
+
+	logging.debug(f"\n{index}")
 
 	if hist:
 		histogram(index, bins, f"histogram-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}", crop)
