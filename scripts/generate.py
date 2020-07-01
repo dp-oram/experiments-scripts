@@ -43,7 +43,7 @@ def parse():
 	parser.add_argument("--crop", dest="crop", action="store_true", help=f"Whether to crop index according to min and max.")
 	parser.add_argument("--hist", dest="hist", action="store_true", help=f"Whether to plot histogram.")
 
-	parser.add_argument("--range", dest="range", nargs='+', help="Query ranges", required=True)
+	parser.add_argument("--range", dest="ranges", nargs='+', help="Query ranges", required=True)
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
@@ -59,7 +59,7 @@ def parse():
 	random.seed(args.seed)
 	np.random.seed(args.seed + 1)
 
-	return args.size, args.bins, args.dataset, args.pums, args.min, args.max, args.crop, args.hist, args.range
+	return args.size, args.bins, args.dataset, args.pums, args.min, args.max, args.crop, args.hist, args.ranges
 
 
 def histogram(index, bins, filename, cropped):
