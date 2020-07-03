@@ -43,7 +43,7 @@ def parse():
 	parser.add_argument("--crop", dest="crop", action="store_true", help=f"Whether to crop index according to min and max.")
 	parser.add_argument("--hist", dest="hist", action="store_true", help=f"Whether to plot histogram.")
 
-	parser.add_argument("--range", dest="ranges", nargs='+', help="Query ranges", required=True)
+	parser.add_argument("-s", "--selectivities", dest="selectivities", nargs='+', help="Selectivities as percents", required=True)
 
 	parser.add_argument("--seed", dest="seed", metavar="seed", type=int, default=123456, required=False, help="Seed to use for PRG")
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
@@ -59,7 +59,7 @@ def parse():
 	random.seed(args.seed)
 	np.random.seed(args.seed + 1)
 
-	return args.size, args.bins, args.dataset, args.pums, args.min, args.max, args.crop, args.hist, args.ranges
+	return args.size, args.bins, args.dataset, args.pums, args.min, args.max, args.crop, args.hist, args.selectivities
 
 
 def histogram(index, bins, filename, cropped):
@@ -128,40 +128,57 @@ def generateUniform(size, _min, _max):
 	return np.random.uniform(low=float(_min), high=float(_max), size=size)
 
 
-def queriesFollowDistribution(index, bins, ranges):
-	hist, bins = np.histogram(index, density=True, bins=bins)
-	cdf = np.cumsum(hist)
-	cdf = cdf / cdf[-1]
-	uniform = np.random.rand(100)
+def getRightEndpoint(index, left, selectivity):
+	leftIndex = np.searchsorted(index, left)
+	querySize = int((len(index) / 100) * float(selectivity))
 
-	for _range in ranges:
+	if leftIndex + querySize >= len(index):
+		raise Exception("LEft endpoint is too far right for given selectivity")
+	right = index[leftIndex + querySize]
+	return right
+
+
+def generateQueries(index, bins, selectivities, follow):
+	if follow:
+		hist, bins = np.histogram(index, density=True, bins=bins)
+		cdf = np.cumsum(hist)
+		cdf = cdf / cdf[-1]
+	else:
+		_min = np.min(index)
+		_max = np.max(index)
+
+	uniform = np.random.rand(1000)
+
+	for selectivity in selectivities:
 		queries = []
+		queriesCount = 0
 		for r in uniform:
-			leftBin = np.argwhere(cdf == min(cdf[(cdf - r) > 0]))[0][0]
-			left = (bins[leftBin + 1] - bins[leftBin]) * np.random.rand() + bins[leftBin]
-			queries += [(left, left + float(_range))]
+			if follow:
+				leftBin = np.argwhere(cdf == min(cdf[(cdf - r) > 0]))[0][0]
+				left = int((bins[leftBin + 1] - bins[leftBin]) * np.random.rand() + bins[leftBin])
+			else:
+				left = np.random.randint(int(_min), int(_max))
 
-		yield queries, _range
+			try:
+				right = getRightEndpoint(index, left, selectivity)
+			except Exception:
+				continue
+
+			queries += [(left, right)]
+
+			queriesCount += 1
+			if queriesCount == 100:
+				break
+
+		if queriesCount < 100:
+			raise Exception("Did not sample enough queries")
+
+		yield queries, selectivity
 
 
-def queriesUniform(index, ranges):
-	_min = np.min(index)
-	_max = np.max(index)
+def main():
 
-	uniform = np.random.rand(100)
-
-	for _range in ranges:
-		queries = []
-		for r in uniform:
-			left = np.random.randint(int(_min), int(_max) - int(_range))
-			queries += [(left, left + float(_range))]
-
-		yield queries, _range
-
-
-if __name__ == "__main__":
-
-	size, bins, dataset, pums, _min, _max, crop, hist, ranges = parse()
+	size, bins, dataset, pums, _min, _max, crop, hist, selectivities = parse()
 
 	if dataset == Dataset.CA:
 		logging.debug("Reading CA employees dataset")
@@ -186,8 +203,10 @@ if __name__ == "__main__":
 		index = index[(index >= _min) & (index <= _max)]
 
 	index = changeSize(index, size, bins=bins)
+	index = np.sort(index)
 
 	logging.debug(f"\n{index}")
+	logging.debug(f"Size: {len(index)}")
 
 	if hist:
 		histogram(index, bins, f"histogram-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}", crop)
@@ -199,7 +218,11 @@ if __name__ == "__main__":
 			out.write(f"{record}\n")
 
 	for followDistribution in [True, False]:
-		for queries, _range in queriesFollowDistribution(index, bins, ranges) if followDistribution else queriesUniform(index, ranges):
-			with open(f"../output/queries-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}-{_range}-{'follow' if followDistribution else 'uniform'}.csv", "w") as out:
+		for queries, selectivity in generateQueries(index, bins, selectivities, followDistribution):
+			with open(f"../output/queries-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}-{selectivity}-{'follow' if followDistribution else 'uniform'}.csv", "w") as out:
 				for query in queries:
 					out.write(f"{query[0]},{query[1]}\n")
+
+
+if __name__ == "__main__":
+	main()
