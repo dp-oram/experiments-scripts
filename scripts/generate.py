@@ -211,13 +211,13 @@ def main():
 
 	logging.debug("Writing Results")
 
-	with open(f"../output/dataset-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}.csv", "w") as out:
+	with open(f"../output/dataset-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}-{size}.csv", "w") as out:
 		for record in index:
 			out.write(f"{record}\n")
 
 	for followDistribution in [True, False]:
 		for queries, selectivity in generateQueries(index, bins, selectivities, followDistribution):
-			with open(f"../output/queries-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}-{selectivity}-{'follow' if followDistribution else 'uniform'}.csv", "w") as out:
+			with open(f"../output/queries-{dataset}{f'-{pums}' if dataset == Dataset.PUMS else ''}-{selectivity}-{'follow' if followDistribution else 'uniform'}-{size}.csv", "w") as out:
 				for query in queries:
 					out.write(f"{query[0]},{query[1]}\n")
 
