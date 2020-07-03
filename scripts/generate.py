@@ -171,6 +171,15 @@ def generateQueries(index, bins, selectivities, follow):
 		yield queries, selectivity
 
 
+def datasetName(dataset, size, pums, _max):
+	if dataset == Dataset.PUMS:
+		return f"{dataset}-{pums}"
+	elif dataset == Dataset.CA:
+		return f"{dataset}-{size}"
+	elif dataset == Dataset.UNIFORM:
+		return f"{dataset}-{size}-{_max}"
+
+
 def main():
 
 	size, bins, dataset, pums, _min, _max, crop, hist, selectivities = parse()
@@ -210,13 +219,13 @@ def main():
 
 	logging.debug("Writing Results")
 
-	with open(f"../output/dataset-{dataset}-{pums if dataset == Dataset.PUMS else size}.csv", "w") as out:
+	with open(f"../output/dataset-{datasetName(dataset, size, pums, _max)}.csv", "w") as out:
 		for record in index:
 			out.write(f"{record}\n")
 
 	for followDistribution in [True, False]:
 		for queries, selectivity in generateQueries(index, bins, selectivities, followDistribution):
-			with open(f"../output/queries-{dataset}-{pums if dataset == Dataset.PUMS else size}-{selectivity}-{'follow' if followDistribution else 'uniform'}.csv", "w") as out:
+			with open(f"../output/queries-{datasetName(dataset, size, pums, _max)}-{selectivity}-{'follow' if followDistribution else 'uniform'}.csv", "w") as out:
 				for query in queries:
 					out.write(f"{query[0]},{query[1]}\n")
 
