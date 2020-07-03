@@ -133,8 +133,9 @@ def getRightEndpoint(index, left, selectivity):
 	querySize = int((len(index) / 100) * float(selectivity))
 
 	if leftIndex + querySize >= len(index):
-		raise Exception("LEft endpoint is too far right for given selectivity")
+		raise Exception("Left endpoint is too far right for given selectivity")
 	right = index[leftIndex + querySize]
+
 	return right
 
 
@@ -147,12 +148,11 @@ def generateQueries(index, bins, selectivities, follow):
 		_min = np.min(index)
 		_max = np.max(index)
 
-	uniform = np.random.rand(1000)
-
 	for selectivity in selectivities:
 		queries = []
-		queriesCount = 0
-		for r in uniform:
+		while True:
+			r = np.random.rand()
+
 			if follow:
 				leftBin = np.argwhere(cdf == min(cdf[(cdf - r) > 0]))[0][0]
 				left = int((bins[leftBin + 1] - bins[leftBin]) * np.random.rand() + bins[leftBin])
@@ -166,12 +166,8 @@ def generateQueries(index, bins, selectivities, follow):
 
 			queries += [(left, right)]
 
-			queriesCount += 1
-			if queriesCount == 100:
+			if len(queries) == 100:
 				break
-
-		if queriesCount < 100:
-			raise Exception("Did not sample enough queries")
 
 		yield queries, selectivity
 
@@ -203,6 +199,8 @@ def main():
 		index = index[(index >= _min) & (index <= _max)]
 
 	index = changeSize(index, size, bins=bins)
+	index = index + np.random.rand(len(index))
+	index = np.around(index, decimals=2)
 	index = np.sort(index)
 
 	logging.debug(f"\n{index}")
