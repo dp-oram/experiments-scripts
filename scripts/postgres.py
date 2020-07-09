@@ -26,9 +26,12 @@ def parse():
 	parser.add_argument("--dataset", dest="dataset", metavar="dataset", type=lambda x: is_valid_file(parser, x), required=True, help=f"Dataset to read.")
 	parser.add_argument("--queryset", dest="queryset", metavar="queryset", type=lambda x: is_valid_file(parser, x), required=True, help=f"Queryset to read.")
 
-	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
+	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="Increase output verbosity", action="store_true")
 	parser.add_argument("--password", dest="password", metavar="password", type=str, required=True, help=f"Password for PostgreSQL.")
 	parser.add_argument("--host", dest="host", metavar="host", type=str, default="postgres", help=f"Host for PostgreSQL.")
+
+	parser.add_argument("--skip-insert", dest="skipInsert", default=False, help="Skip INSERT stage", action="store_true")
+	parser.add_argument("--skip-queries", dest="skipQueries", default=False, help="Skip QUERIES stage", action="store_true")
 
 	args = parser.parse_args()
 
@@ -38,7 +41,7 @@ def parse():
 		datefmt='%a, %d %b %Y %H:%M:%S',
 	)
 
-	return args.recordSize, args.queries, args.batch, args.dataset, args.queryset, args.password, args.host
+	return args.recordSize, args.queries, args.batch, args.dataset, args.queryset, args.password, args.host, args.skipInsert, args.skipQueries
 
 
 def main():
@@ -47,7 +50,7 @@ def main():
 	import time
 	import statistics
 
-	recordSize, queries, batch, dataset, queryset, password, host = parse()
+	recordSize, queries, batch, dataset, queryset, password, host, skipInsert, skipQueries = parse()
 
 	try:
 		connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
@@ -63,59 +66,67 @@ Dataset: {dataset}
 Queryset: {queryset}
 		""")
 
-		cursor.execute("""
-			DROP TABLE IF EXISTS experiment;
-			CREATE TABLE experiment (
-				salary	double precision,
-				payload bytea NOT NULL
-			);
-			CREATE INDEX ON experiment (salary);
-		""")
+		if not skipInsert:
 
-		connection.commit()
+			cursor.execute("""
+				DROP TABLE IF EXISTS experiment;
+				CREATE TABLE experiment (
+					salary	double precision,
+					payload bytea NOT NULL
+				);
+				CREATE INDEX ON experiment (salary);
+			""")
 
-		logging.info("Created table and index, inserting dataset")
-		beforeInsertTime = time.time()
+			connection.commit()
 
-		toInsert = []
-		with open(dataset, "r") as datasetFile:
-			line = datasetFile.readline()
-			while line:
-				salary = float(line)
-				payload = bytearray(random.getrandbits(8) for _ in range(recordSize))
-				toInsert += [(salary, payload)]
+			logging.info("Created table and index, inserting dataset")
+			beforeInsertTime = time.time()
 
+			toInsert = []
+			with open(dataset, "r") as datasetFile:
 				line = datasetFile.readline()
+				while line:
+					salary = float(line)
+					payload = bytearray(random.getrandbits(8) for _ in range(recordSize))
+					toInsert += [(salary, payload)]
 
-				if len(toInsert) == batch or not line:
-					psycopg2.extras.execute_values(cursor, "INSERT INTO experiment (salary, payload) VALUES %s", toInsert)
-					connection.commit()
-					logging.debug(f"Inserted {len(toInsert)} records")
-					toInsert = []
+					line = datasetFile.readline()
 
-		beforeQueriesTime = time.time()
+					if len(toInsert) == batch or not line:
+						psycopg2.extras.execute_values(cursor, "INSERT INTO experiment (salary, payload) VALUES %s", toInsert)
+						connection.commit()
+						logging.debug(f"Inserted {len(toInsert)} records")
+						toInsert = []
 
-		logging.info(f"Finished inserting in {int((beforeQueriesTime - beforeInsertTime) * 1000)} ms. Will do queries.")
+			beforeQueriesTime = time.time()
 
-		overheads = []
-		with open(queryset, "r") as querysetFile:
-			line = querysetFile.readline()
-			while line:
-				endpoints = line.split(",")
-				beforeQueryTime = time.time()
+			logging.info(f"Finished inserting in {int((beforeQueriesTime - beforeInsertTime) * 1000)} ms.")
 
-				cursor.execute("SELECT * FROM experiment WHERE salary BETWEEN %s AND %s;", endpoints)
-				result = cursor.fetchall()
+		logging.info("Will do queries.")
 
-				afterQueryTime = time.time()
-				overhead = int((afterQueryTime - beforeQueryTime) * 1000)
-				overheads += [overhead]
+		if not skipQueries:
 
-				logging.info(f"Query {{{endpoints[0]}, {endpoints[1].rstrip()}}}: fetched {len(result)} records in {overhead} ms.")
-
+			overheads = []
+			with open(queryset, "r") as querysetFile:
 				line = querysetFile.readline()
+				while line:
+					endpoints = line.split(",")
+					beforeQueryTime = time.time()
 
-		logging.info(f"Average query time: {statistics.mean(overheads) :.3f} ms")
+					cursor.execute("SELECT * FROM experiment WHERE salary BETWEEN %s AND %s;", endpoints)
+					result = cursor.fetchall()
+
+					afterQueryTime = time.time()
+					overhead = int((afterQueryTime - beforeQueryTime) * 1000)
+					overheads += [overhead]
+
+					logging.info(f"Query {{{endpoints[0]}, {endpoints[1].rstrip()}}}: fetched {len(result)} records in {overhead} ms.")
+
+					line = querysetFile.readline()
+					if len(overheads) == queries:
+						break
+
+			logging.info(f"Average query time: {statistics.mean(overheads) :.3f} ms")
 
 		cursor.close()
 
