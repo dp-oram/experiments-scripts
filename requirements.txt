@@ -3,4 +3,4 @@ bokeh
 numpy
 scipy
 selenium
-psycopg2 == 2.8.4
+psycopg2-binary
