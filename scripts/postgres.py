@@ -28,6 +28,7 @@ def parse():
 
 	parser.add_argument("-v", "--verbose", dest="verbose", default=False, help="increase output verbosity", action="store_true")
 	parser.add_argument("--password", dest="password", metavar="password", type=str, required=True, help=f"Password for PostgreSQL.")
+	parser.add_argument("--host", dest="host", metavar="host", type=str, default="postgres", help=f"Host for PostgreSQL.")
 
 	args = parser.parse_args()
 
@@ -37,7 +38,7 @@ def parse():
 		datefmt='%a, %d %b %Y %H:%M:%S',
 	)
 
-	return args.recordSize, args.queries, args.batch, args.dataset, args.queryset, args.password
+	return args.recordSize, args.queries, args.batch, args.dataset, args.queryset, args.password, args.host
 
 
 def main():
@@ -46,14 +47,14 @@ def main():
 	import time
 	import statistics
 
-	recordSize, queries, batch, dataset, queryset, password = parse()
+	recordSize, queries, batch, dataset, queryset, password, host = parse()
 
 	try:
-		connection = psycopg2.connect(host="postgres.bogatov.dev", database="dporam", user="dporam", password=password)
+		connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
 
 		cursor = connection.cursor()
 		cursor.execute("SELECT version()")
-		cursor.fetchone() # make sure no crash
+		cursor.fetchone()  # make sure no crash
 		logging.info(f"""
 Record size: {recordSize}
 Queries number: {queries}
