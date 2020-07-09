@@ -3,3 +3,4 @@ bokeh
 numpy
 scipy
 selenium
+psycopg2 == 2.8.4
