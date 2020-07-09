@@ -102,9 +102,8 @@ Queryset: {queryset}
 
 			logging.info(f"Finished inserting in {int((beforeQueriesTime - beforeInsertTime) * 1000)} ms.")
 
-		logging.info("Will do queries.")
-
 		if not skipQueries:
+			logging.info("Will do queries.")
 
 			overheads = []
 			with open(queryset, "r") as querysetFile:
