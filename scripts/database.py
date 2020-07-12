@@ -78,7 +78,7 @@ def main():
 		connection = None
 
 		if engine == Engine.postgres:
-			connection = psycopg2.connect(host=host, database="postgres", user="postgres", password=password)
+			connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
 		else:
 			connection = mysql.connect(host=host, port=3306, user="root", passwd=password)
 
