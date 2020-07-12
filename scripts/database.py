@@ -4,6 +4,22 @@ import psycopg2
 import numpy as np
 import logging
 import random
+from enum import Enum, auto
+
+
+class Engine(Enum):
+	mysql = auto()
+	postgres = auto()
+
+	def __str__(self):
+		return self.name
+
+	@staticmethod
+	def valueForParse(key):
+		try:
+			return Engine[key]
+		except KeyError:
+			raise ValueError()
 
 
 def parse():
@@ -19,8 +35,11 @@ def parse():
 
 	parser = argparse.ArgumentParser(description="Run Postgres experiment")
 
+	parser.add_argument('--engine', dest="engine", metavar="engine", type=Engine.valueForParse, choices=list(Engine), required=True, help="Engine to run queries against")
+
 	parser.add_argument("--record-size", dest="recordSize", metavar="record-size", type=int, default=4096, help=f"The size of the record in bytes.")
 	parser.add_argument("--queries", dest="queries", metavar="queries-count", type=int, default=20, help=f"The number of queries to run.")
+	parser.add_argument("--count", dest="count", metavar="count", type=int, default=-1, help=f"The number of datapoint to read.")
 	parser.add_argument("--batch", dest="batch", metavar="batch", type=int, default=1000, help=f"The number of records to insert at a time.")
 
 	parser.add_argument("--dataset", dest="dataset", metavar="dataset", type=lambda x: is_valid_file(parser, x), required=True, help=f"Dataset to read.")
@@ -41,23 +60,28 @@ def parse():
 		datefmt='%a, %d %b %Y %H:%M:%S',
 	)
 
-	return args.recordSize, args.queries, args.batch, args.dataset, args.queryset, args.password, args.host, args.skipInsert, args.skipQueries
+	return args.engine, args.recordSize, args.count, args.queries, args.batch, args.dataset, args.queryset, args.password, args.host, args.skipInsert, args.skipQueries
 
 
 def main():
-	import psycopg2
-	import psycopg2.extras
 	import time
 	import statistics
+	import string
 
-	recordSize, queries, batch, dataset, queryset, password, host, skipInsert, skipQueries = parse()
+	engine, recordSize, count, queries, batch, dataset, queryset, password, host, skipInsert, skipQueries = parse()
+
+	import psycopg2
+	import psycopg2.extras
+	import mysql.connector as mysql
 
 	try:
-		connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
+		connection = None
 
-		cursor = connection.cursor()
-		cursor.execute("SELECT version()")
-		cursor.fetchone()  # make sure no crash
+		if engine == Engine.postgres:
+			connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
+		else:
+			connection = mysql.connect(host=host, port=3306, user="root", passwd=password)
+
 		logging.info(f"""
 Record size: {recordSize}
 Queries number: {queries}
@@ -66,16 +90,38 @@ Dataset: {dataset}
 Queryset: {queryset}
 		""")
 
+		cursor = connection.cursor()
+
+		if engine == Engine.postgres:
+			cursor.execute("SELECT version()")
+			cursor.fetchone()  # make sure no crash
+		else:
+			cursor.execute("CREATE DATABASE IF NOT EXISTS experiments")
+			cursor.execute("USE experiments")
+			cursor.execute("SET SESSION query_cache_type=0")
+			connection.commit()
+
 		if not skipInsert:
 
-			cursor.execute("""
-				DROP TABLE IF EXISTS experiment;
-				CREATE TABLE experiment (
-					salary	double precision,
-					payload bytea NOT NULL
-				);
-				CREATE INDEX ON experiment (salary);
-			""")
+			if engine == Engine.postgres:
+				cursor.execute("""
+					DROP TABLE IF EXISTS experiment;
+					CREATE TABLE experiment (
+						salary	double precision,
+						payload bytea NOT NULL
+					);
+					CREATE INDEX ON experiment (salary);
+				""")
+			else:
+				cursor.execute("DROP TABLE IF EXISTS experiment")
+				cursor.execute("""
+					CREATE TABLE IF NOT EXISTS experiment (
+						salary	DOUBLE,
+						payload BLOB,
+
+						INDEX salaryIndex (salary)
+					)
+				""")
 
 			connection.commit()
 
@@ -83,20 +129,34 @@ Queryset: {queryset}
 			beforeInsertTime = time.time()
 
 			toInsert = []
+			readCount = 0
 			with open(dataset, "r") as datasetFile:
 				line = datasetFile.readline()
 				while line:
+
 					salary = float(line)
-					payload = bytearray(random.getrandbits(8) for _ in range(recordSize))
+					if engine == Engine.postgres:
+						payload = bytearray(random.getrandbits(8) for _ in range(recordSize))
+					else:
+						payload = "".join(random.choice(string.ascii_lowercase) for i in range(recordSize)).encode("utf-8")
+
 					toInsert += [(salary, payload)]
 
 					line = datasetFile.readline()
+					readCount += 1
 
-					if len(toInsert) == batch or not line:
-						psycopg2.extras.execute_values(cursor, "INSERT INTO experiment (salary, payload) VALUES %s", toInsert)
+					if len(toInsert) == batch or not line or readCount == count:
+						if engine == Engine.postgres:
+							psycopg2.extras.execute_values(cursor, "INSERT INTO experiment (salary, payload) VALUES %s", toInsert)
+						else:
+							cursor.executemany("INSERT INTO experiment (salary, payload) VALUES (%s, %s)", toInsert)
+
 						connection.commit()
 						logging.debug(f"Inserted {len(toInsert)} records")
 						toInsert = []
+
+						if readCount == count:
+							break
 
 			beforeQueriesTime = time.time()
 
@@ -129,7 +189,7 @@ Queryset: {queryset}
 
 		cursor.close()
 
-	except (Exception, psycopg2.DatabaseError) as error:
+	except (Exception, psycopg2.DatabaseError, mysql.connector.Error) as error:
 		logging.fatal(error)
 	finally:
 		if connection is not None:
