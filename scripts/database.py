@@ -78,7 +78,7 @@ def main():
 		connection = None
 
 		if engine == Engine.postgres:
-			connection = psycopg2.connect(host=host, database="dporam", user="dporam", password=password)
+			connection = psycopg2.connect(host=host, database="postgres", user="postgres", password=password)
 		else:
 			connection = mysql.connect(host=host, port=3306, user="root", passwd=password)
 
@@ -189,7 +189,7 @@ Queryset: {queryset}
 
 		cursor.close()
 
-	except (Exception, psycopg2.DatabaseError, mysql.connector.Error) as error:
+	except (Exception, psycopg2.DatabaseError) as error:
 		logging.fatal(error)
 	finally:
 		if connection is not None:
