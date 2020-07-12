@@ -16,10 +16,13 @@ public class Program
 		=> await CommandLineApplication.ExecuteAsync<Program>(args);
 
 	[Option("--seed <SEED>", "Seed to use for pseudorandom operations", CommandOptionType.SingleValue)]
-	public int Seed { get; } = new Random().Next();
+	public int Seed { get; } = 1305;
 
 	[Option("--count <COUNT>", "If supplied, will make the simulator to generate synthetic inputs, otherwise, will read inputs", CommandOptionType.SingleValue)]
 	public int Count { get; } = 0;
+
+	[Option("--input <INPUT>", "a portion of input file name, such as \"UNIFORM-100-1000000\" in \"dataset-UNIFORM-100-1000000.csv\"", CommandOptionType.SingleValue)]
+	public string Input { get; } = "UNIFORM-1000000-10000";
 
 	private async Task OnExecuteAsync()
 	{
@@ -27,6 +30,7 @@ public class Program
 
 		Console.WriteLine($"Seed: {Seed}");
 		Console.WriteLine($"Count: {Count}");
+		Console.WriteLine($"Input: {Input}");
 		Console.WriteLine();
 
 		DeleteSimulatorCache();
@@ -34,8 +38,8 @@ public class Program
 		Console.WriteLine($"{DateTime.Now.ToString("MM/dd/yyyy HH:mm:ss |"),-23}{"ORAMs",-10}{"Buckets",-10}{"beta",-10}{"epsilon",-10}{"gamma",-10}{"prune",-10}Results per ORAM (real+padding+noise=total)");
 		Console.WriteLine();
 
-		Func<int, int, int, int, bool, bool, Task<(int bucket, int beta, int epsilon, bool gamma, bool prune, string log)>> simulate =
-			async (int n, int buckets, int beta, int epsilon, bool gamma, bool prune) =>
+		Func<int, int, int, double, bool, bool, Task<(int bucket, int beta, double epsilon, bool gamma, bool prune, string log)>> simulate =
+			async (int n, int buckets, int beta, double epsilon, bool gamma, bool prune) =>
 			{
 				var result = await RunProcessAsync(new Dictionary<string, string>{
 					{ "generateIndices", false.ToString() },
@@ -48,10 +52,13 @@ public class Program
 					{ "beta", beta.ToString() },
 					{ "epsilon", epsilon.ToString() },
 					{ "useGamma", gamma.ToString() },
+					{ "queries", 20.ToString() },
 					{ "count", Count.ToString() },
 					{ "levels", (prune ? 0 : 256).ToString() },
 					{ "verbosity", "TRACE" },
 					{ "fileLogging", true.ToString() },
+					{ "dataset", $"dataset-{Input}" },
+					{ "queryset", $"queries-{Input}-0.5-follow" },
 					{ "seed", Seed.ToString() }
 				});
 
@@ -59,20 +66,20 @@ public class Program
 				return (buckets, beta, epsilon, gamma, prune, logMessage);
 			};
 
-		foreach (var n in new List<int> { 1, 16, 48, 64, 96 })
+		foreach (var n in new List<int> { 64 })
 		{
-			var tasks = new List<Task<(int bucket, int beta, int epsilon, bool gamma, bool prune, string log)>>();
+			var tasks = new List<Task<(int bucket, int beta, double epsilon, bool gamma, bool prune, string log)>>();
 			var firstRun = false;
 
-			foreach (var buckets in new List<int> { 256, 4096, 65536, 1048576 })
+			foreach (var buckets in new List<int> { 65536 })
 			{
 				foreach (var beta in new List<int> { 20 })
 				{
-					foreach (var epsilon in new List<int> { 1 })
+					foreach (var epsilon in new List<double> { 0.01, 0.025, 0.05, 0.075, 0.1, 0.25, 0.5, 0.6, 0.693, 0.7, 0.8, 0.9, 1.0, 1.1, 1.3, 1.5, 2.0, 5.0, 7.5, 10.0 })
 					{
-						foreach (var gamma in new List<bool> { false, true })
+						foreach (var gamma in new List<bool> { true })
 						{
-							foreach (var prune in new List<bool> { false, true })
+							foreach (var prune in new List<bool> { false })
 							{
 								tasks.Add(Task.Run(async () =>
 								{
@@ -141,7 +148,7 @@ public class Program
 				if (string.IsNullOrEmpty(stderr) && process.ExitCode == 0)
 				{
 					// success
-					var regex = new Regex(@".; \((\d+)\+(\d+)\+(\d+)=(\d+)\) records per query");
+					var regex = new Regex(@".; \((\d+)\+(\d+)\+(\d+)=(\d+)\) records / query");
 					var match = regex.Match(result);
 					if (match.Success)
 					{
@@ -155,7 +162,7 @@ public class Program
 				}
 				else
 				{
-					throw new Exception($"Execution failed for {paramString}");
+					throw new Exception($"Execution failed for {paramString}. STDERR: {stderr}. STDOUT: {result}");
 				}
 
 				return default;
