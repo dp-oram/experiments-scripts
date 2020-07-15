@@ -1,0 +1,21 @@
+[Unit]
+Description=ORAM server
+After=network.target
+Documentation=https://pathoram.dbogatov.org/
+
+[Service]
+Type=simple
+
+WorkingDirectory=/home/dmytro/dp-oram/dp-oram
+
+ExecStartPre=/usr/bin/git pull
+ExecStartPre=/usr/bin/make server
+
+ExecStart=/home/dmytro/dp-oram/dp-oram/bin/oram-server
+
+TimeoutStopSec=0
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+Alias=oram.service
