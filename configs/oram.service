@@ -17,6 +17,8 @@ TimeoutStopSec=0
 Restart=on-failure
 RestartSec=10
 
+User=dmytro
+
 [Install]
 WantedBy=multi-user.target
 Alias=oram.service
