@@ -3,7 +3,6 @@
 from bokeh.models import Legend
 from bokeh.plotting import figure, show
 from bokeh.io import export_svgs
-import numpy as np
 
 lineSize = 2
 circleSize = 3
