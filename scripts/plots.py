@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 
-from bokeh.io import show
+from bokeh.io import show, export_svgs
 from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot
 from bokeh.transform import dodge
+import svg_stack as ss
 
 def make_barchart(bins, values, title, color):
 
@@ -16,7 +17,7 @@ def make_barchart(bins, values, title, color):
 
 	source = ColumnDataSource(data=dict(bins=bins, values=values, color=["#%02x%02x%02x" % x for x in color]))
 
-	plot = figure(x_range=bins, y_range=(0,max(values)*1.1), title=title, toolbar_location=None, tools="")
+	plot = figure(x_range=bins, y_range=(0,max(values)*1.1), title=title, toolbar_location=None, tools="", plot_width=350, plot_height=200)
 
 	plot.vbar(x="bins", top="values", width=0.8, color="color", legend_field="bins", source=source, alpha=0.8)
 
@@ -24,6 +25,9 @@ def make_barchart(bins, values, title, color):
 	plot.legend.orientation = "horizontal"
 	plot.legend.location = "top_center"
 	plot.legend.visible = False
+	plot.title.align = "center"
+	plot.title.offset = 20
+	plot.title.vertical_align = "top"
 
 	return plot
 
@@ -39,7 +43,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 		}
 	)
 
-	plot = figure(x_range=bins, y_range=(0, max(max(values1["data"], values2["data"]))*1.1), title=title, toolbar_location=None, tools="")
+	plot = figure(x_range=bins, y_range=(0, max(max(values1["data"], values2["data"]))*1.1), title=title, toolbar_location=None, tools="", plot_width=350, plot_height=200)
 
 	plot.vbar(x=dodge('bins', -0.2, range=plot.x_range), top=values1["title"], width=0.4, source=source, color="color1", legend_label=values1["title"])
 	plot.vbar(x=dodge('bins', +0.2, range=plot.x_range), top=values2["title"], width=0.4, source=source, color="color2", legend_label=values2["title"])
@@ -49,6 +53,9 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 	plot.legend.location = "top_right"
 	plot.legend.orientation = "vertical"
 	plot.legend.background_fill_alpha = 0.5
+	plot.title.align = "center"
+	plot.title.offset = 20
+	plot.title.vertical_align = "top"
 
 
 	return plot
@@ -191,17 +198,42 @@ data = [
 	}
 ]
 
-plots = []
+# plots = []
+# for piece in data:
+# 	if "values" in piece:
+# 		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"])
+# 	else:
+# 		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"], piece["color2"])
+# 	plots += [plot]
+
+# grid = gridplot(plots, ncols=3, plot_width=350, plot_height=200)
+
+# show(grid)
+
+doc = ss.Document()
+
+layout = ss.VBoxLayout()
+count = 0
+layout_horizontal = ss.HBoxLayout()
+
 for piece in data:
+	if count == 3:
+		layout.addLayout(layout_horizontal)
+		layout_horizontal = ss.HBoxLayout()
+		count = 0
+
 	if "values" in piece:
 		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"])
 	else:
 		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"], piece["color2"])
-	plots += [plot]
+	plot.output_backend="svg"
+	name = f"../output/{piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')}.svg"
+	export_svgs(plot, filename=name)
 
-grid = gridplot(plots, ncols=3, plot_width=350, plot_height=200)
+	layout_horizontal.addSVG(name, alignment=ss.AlignTop|ss.AlignHCenter)
 
-show(grid)
+	count += 1
 
-# grid.output_backend="svg"
-# export_svgs(plot, filename="plot.svg")
+layout.addLayout(layout_horizontal)
+doc.setLayout(layout)
+doc.save("../output/plots.svg")
