@@ -10,6 +10,10 @@ circleSize = 3
 
 def plotEpsilons(epsilons, noises, totals):
 
+	print(epsilons)
+	print(noises)
+	print(totals)
+
 	plot = figure(title="Epsilons", x_axis_label="Epsilons", y_axis_label="Records")
 	plot.xaxis.axis_label_text_font = "normal"
 	plot.yaxis.axis_label_text_font = "normal"
