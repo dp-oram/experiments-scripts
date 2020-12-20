@@ -1,11 +1,25 @@
 #!/usr/bin/env python3
 
 from bokeh.io import show, export_svgs
-from bokeh.models import ColumnDataSource, LabelSet, Legend, FactorRange
+from bokeh.models import ColumnDataSource, LabelSet, Legend, FactorRange, FuncTickFormatter
 from bokeh.plotting import figure
 from bokeh.layouts import gridplot
 from bokeh.transform import dodge, factor_cmap
 import svg_stack as ss
+
+def configure_plot(plot):
+	plot.legend.background_fill_alpha = 0.0
+	plot.legend.border_line_color = None
+	plot.legend.label_text_font_size = "8pt"
+	plot.legend.label_text_font = "libertine"
+	plot.title.align = "center"
+	plot.title.offset = 20
+	plot.title.vertical_align = "top"
+	plot.title.text_font = "libertine"
+	plot.xaxis.major_label_text_font = "libertine"
+	plot.yaxis.major_label_text_font = "libertine"
+
+	return plot
 
 def make_barchart(bins, values, title, color):
 
@@ -40,9 +54,6 @@ def make_barchart(bins, values, title, color):
 	plot.legend.orientation = "horizontal"
 	plot.legend.location = "top_center"
 	plot.legend.visible = False
-	plot.title.align = "center"
-	plot.title.offset = 20
-	plot.title.vertical_align = "top"
 
 	labels = LabelSet(
 		x='bins',
@@ -74,19 +85,13 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 
 	plot = figure(x_range=bins, y_range=(0, max(max(values1["data"], values2["data"]))*1.4), title=title, toolbar_location=None, tools="", plot_width=300, plot_height=200)
 
-	plot.vbar(x=dodge('bins', -0.2, range=plot.x_range), top=values1["title"], width=0.4, source=source, color="color1", legend_label=values1["title"])
-	plot.vbar(x=dodge('bins', +0.2, range=plot.x_range), top=values2["title"], width=0.4, source=source, color="color2", legend_label=values2["title"])
+	plot.vbar(x=dodge('bins', -0.2, range=plot.x_range), top=values1["title"], width=0.4, source=source, color="color1", legend_label=values1["title"], alpha=0.8)
+	plot.vbar(x=dodge('bins', +0.2, range=plot.x_range), top=values2["title"], width=0.4, source=source, color="color2", legend_label=values2["title"], alpha=0.8)
 
 	plot.x_range.range_padding = 0.1
 	plot.xgrid.grid_line_color = None
 	plot.legend.location = "top_center"
 	plot.legend.orientation = "horizontal"
-	plot.legend.background_fill_alpha = 0.0
-	plot.legend.border_line_color = None
-	plot.legend.label_text_font_size = "8pt"
-	plot.title.align = "center"
-	plot.title.offset = 20
-	plot.title.vertical_align = "top"
 
 	labels1 = LabelSet(
 		x='bins',
@@ -116,7 +121,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 
 	return plot
 
-def epsilons_plot(title):
+def epsilons_plot(title, colors):
 	epsilons = ['0.01', '0.025', '0.05', '0.075', '0.1', '0.25', '0.5', '0.6', '0.693', '0.7', '0.8', '0.9', '1']
 	noises = ['1959', '851', '469', '337', '270', '146', '103', '95', '90', '90', '86', '83', '80']
 	totals = ['2039', '931', '548', '417', '350', '225', '182', '175', '170', '170', '165', '162', '160']
@@ -124,41 +129,36 @@ def epsilons_plot(title):
 	lineSize = 2
 	circleSize = 3
 
-	plot = figure(title=title, x_axis_label="Epsilon value", y_axis_label="Records number", plot_width=300, plot_height=200)
-	plot.xaxis.axis_label_text_font = "normal"
-	plot.yaxis.axis_label_text_font = "normal"
-	plot.title.align = "center"
-	plot.title.offset = 20
-	plot.title.vertical_align = "top"
+	plot = figure(
+		title=title,
+		plot_width=300,
+		plot_height=200
+	)
 
-	rNoises = plot.line(epsilons, noises, line_width=lineSize)
-	rNoisesMarkers = plot.circle(epsilons, noises, size=circleSize)
+	rNoises = plot.line(epsilons, noises, line_width=lineSize, color="#%02x%02x%02x" % colors[0])
+	rNoisesMarkers = plot.circle(epsilons, noises, size=circleSize, color="#%02x%02x%02x" % colors[0])
 
-	rTotals = plot.line(epsilons, totals, line_width=lineSize, color="dodgerblue")
-	rTotalsMarkers = plot.circle(epsilons, totals, size=circleSize, color="dodgerblue")
+	rTotals = plot.line(epsilons, totals, line_width=lineSize, color="#%02x%02x%02x" % colors[1])
+	rTotalsMarkers = plot.circle(epsilons, totals, size=circleSize, color="#%02x%02x%02x" % colors[1])
 
 	plot.add_layout(Legend(items=[("Noise records", [rNoises, rNoisesMarkers]), ("Total records", [rTotals, rTotalsMarkers])]))
 
-	plot.legend.background_fill_alpha = 0.0
-	plot.legend.border_line_color = None
-	plot.legend.label_text_font_size = "8pt"
-
 	return plot
 
-def plot_strawman(title):
-	categories = ["1M 64 threads", "4KB 64 threads", "1M 4KB"]
+def plot_strawman(title, colors):
+	categories = ["Record size", "Data size", "Threads"]
 	factors = [
-		("1M 64 threads", "1KB"),
-		("1M 64 threads", "4KB"),
-		("1M 64 threads", "16KB"),
+		(categories[0], "1KB"),
+		(categories[0], "4KB"),
+		(categories[0], "16KB"),
 		#
-		("4KB 64 threads", "100K"),
-		("4KB 64 threads", "1M"),
-		("4KB 64 threads", "10M"),
+		(categories[1], "100K"),
+		(categories[1], "1M"),
+		(categories[1], "10M"),
 		#
-		("1M 4KB", "16"),
-		("1M 4KB", "32"),
-		("1M 4KB", "64"),
+		(categories[2], "16"),
+		(categories[2], "32"),
+		(categories[2], "64"),
 	]
 
 	x = [
@@ -175,18 +175,24 @@ def plot_strawman(title):
 		15000,
 	]
 
+	del colors[1]
+	del colors[2]
+
 	plot = figure(x_range=FactorRange(*factors), y_axis_type="log", y_range=(10, max(x)*1.3), title=title, plot_height=200, plot_width=300, toolbar_location=None, tools="")
 
-	# put your own colors in RGB hex format
-	colors = ["#6d8ef9", "#7460e6", "#cc397e"]
-
-	plot.vbar(x=factors, fill_color=factor_cmap('x', palette=colors, factors=categories, end=1), top=x, width=0.9, alpha=0.5, bottom=0.1)
+	plot.vbar(x=factors, fill_color=factor_cmap('x', palette=["#%02x%02x%02x" % c for c in colors], factors=categories, end=1), top=x, width=0.9, alpha=0.8, bottom=0.1)
 
 	plot.xaxis.major_label_orientation = 1
 	plot.xgrid.grid_line_color = None
-	plot.title.align = "center"
-	plot.title.offset = 20
-	plot.title.vertical_align = "top"
+	plot.xaxis.group_text_font = "libertine"
+
+	plot.yaxis.formatter = FuncTickFormatter(code='''
+return 10 +
+	(Math.log10(tick).toString()
+	.split('')
+	.map(function (d) { return d === '-' ? '⁻' : '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]; })
+	.join(''));
+''')
 
 	return plot
 
@@ -261,7 +267,26 @@ colors = {
 		(118, 121, 162),
 		(144, 147, 192),
 		(160, 163, 205)
-	]
+	],
+	"orange": [
+		(204, 125, 74),
+		(215, 152, 111),
+		(225, 169, 134),
+		(239, 195, 168),
+		(254, 217, 194)
+	],
+	"storm": [
+		(55, 67, 87),
+		(73, 87, 109),
+		(108, 124, 151),
+		(141, 156, 182),
+		(177, 191, 215)
+	],
+	"greyscale": [
+		(62, 62, 62),
+		(110, 110, 110),
+		(161, 161, 161)
+	],
 }
 
 data = [
@@ -282,58 +307,60 @@ data = [
 			"title": "No Gamma method",
 			"data": [7626, 6967, 4874, 4699, 5857]
 		},
-		"color1": colors["rose"],
-		"color2": colors["maroon"]
+		"color1": colors["dusty"],
+		"color2": colors["turquoise"]
 	},
 	{
 		"title": "Selectivity",
 		"bins": ["0.1%", "0.25%", "0.5%", "1%", "2%"],
 		"values": [393, 605, 840, 1216, 2139],
-		"color": colors["violet"]
+		"color": colors["green"]
 	},
 	{
 		"title": "Record Size",
 		"bins": ["1KB", "4KB", "16KB"],
 		"values": [323, 840, 3610],
-		"color": colors["dusty"]
+		"color": colors["ochre"]
 	},
 	{
 		"title": "Data Size",
 		"bins": ["100K", "1M", "10M"],
 		"values": [294, 840, 6442],
-		"color": colors["turquoise"]
+		"color": colors["orange"]
 	},
 	{
 		"title": "Domain Size",
 		"bins": ["100", "10K", "1M"],
 		"values": [5396, 840, 1030],
-		"color": colors["green"]
+		"color": colors["terracotta"]
 	},
 	{
 		"title": "Data Distribution",
 		"bins": ["CA empl.", "Uniform", "PUMS"],
 		"values": [1162, 840, 1675],
-		"color": colors["ochre"]
+		"color": colors["rose"]
 	},
 	{
 		"title": "Query Distribution",
 		"bins": ["Range 1K", "Follow", "Uniform"],
 		"values": [1278, 1675, 969],
-		"color": colors["terracotta"]
+		"color": colors["maroon"]
 	},
 	{
 		"title": "Mechanism",
 		"bins": ["MySQL", "PostgreSQL", "DP-ORAM", "Linear Scan"],
 		"values": [97, 220, 840, 2000],
-		"color": colors["lilac"]
+		"color": colors["violet"]
 	},
 	{
 		"special": "epsilons",
 		"title": "Epsilon effect",
+		"color": (colors["lilac"][0], colors["lilac"][4])
 	},
 	{
 		"special": "strawman",
 		"title": "Linear Scan",
+		"color": colors["storm"]
 	},
 ]
 
@@ -360,14 +387,16 @@ for piece in data:
 		layout.addLayout(layout_horizontal)
 		layout_horizontal = ss.HBoxLayout()
 
+	plot = None
 	if "values" in piece:
 		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"].copy())
 	elif "values1" in piece:
 		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"].copy(), piece["color2"].copy())
 	elif "special" in piece and piece["special"] == "epsilons":
-		plot = epsilons_plot(piece["title"])
+		plot = epsilons_plot(piece["title"], piece["color"])
 	elif "special" in piece and piece["special"] == "strawman":
-		plot = plot_strawman(piece["title"])
+		plot = plot_strawman(piece["title"], piece["color"].copy())
+	plot = configure_plot(plot)
 	plot.output_backend="svg"
 	name = f"../output/{piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')}.svg"
 	export_svgs(plot, filename=name)
