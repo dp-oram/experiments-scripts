@@ -324,7 +324,7 @@ data = [
 	{
 		"title": "Mechanism",
 		"bins": ["MySQL", "PostgreSQL", "DP-ORAM", "Linear Scan"],
-		"values": [97, 220, 840, 1000],
+		"values": [97, 220, 840, 2000],
 		"color": colors["lilac"]
 	},
 	{
