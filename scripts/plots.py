@@ -6,6 +6,9 @@ from bokeh.plotting import figure
 from bokeh.layouts import gridplot
 from bokeh.transform import dodge, factor_cmap
 import svg_stack as ss
+import subprocess
+
+export_to_figures = True
 
 def configure_plot(plot):
 	plot.legend.background_fill_alpha = 0.0
@@ -376,6 +379,76 @@ data = [
 
 # show(grid)
 
+def export_pdf(title, put_to_paper):
+	subprocess.Popen(
+		[
+			"/Applications/Inkscape.app/Contents/MacOS/inkscape",
+			"-D",
+			"-T",
+			f"../output/{title}.svg",
+			"-o",
+			f"../output/{title}.pdf"
+		],
+		stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE
+	).communicate()
+
+	if put_to_paper:
+		subprocess.Popen(["cp", f"../output/{title}.pdf", "../../dp-oram-paper/document/graphics"]).communicate()
+
+
+def export_pdf_latex(title, put_to_paper):
+	subprocess.Popen(
+		[
+			"/Applications/Inkscape.app/Contents/MacOS/inkscape",
+			"-D",
+			f"../output/{title}.svg",
+			"-o",
+			f"../output/{title}.pdf",
+			"--export-latex"
+		],
+		stdout=subprocess.PIPE,
+		stderr=subprocess.PIPE
+	).communicate()
+
+	# FIXES
+	with open(f"../output/{title}.pdf_tex", "r") as file :
+		filedata = file.read()
+
+		# superscripts
+		chars = "⁰¹²³⁴⁵⁶⁷⁸⁹"
+		for i in range(len(chars)):
+			filedata = filedata.replace(f"10{chars[i]}", f"$10^{i}$")
+
+		# extra pages
+		from PyPDF2 import PdfFileReader
+		pdf = PdfFileReader(open(f"../output/{title}.pdf", "rb"))
+		num = pdf.getNumPages()
+
+		# print(f"{num} pages in {title}")
+		for page in range(num + 1, 50):
+			filedata = filedata.replace(f"\\includegraphics[width=\\unitlength,page={page}]{{{title}.pdf}}", "")
+
+	with open(f"../output/{title}.pdf_tex", "w") as file:
+		file.write(filedata)
+
+	if put_to_paper:
+		subprocess.Popen(["cp", f"../output/{title}.pdf", "../../dp-oram-paper/document/graphics"]).communicate()
+		subprocess.Popen(["cp", f"../output/{title}.pdf_tex", "../../dp-oram-paper/document/figures/pdf_tex"]).communicate()
+
+	if export_to_figures:
+		f = open(f"../../dp-oram-paper/document/figures/fig-{title}.tex", "w+")
+		f.write(f"""
+\\begin{{figure}}
+	\small
+	\centering
+	\def\svgwidth{{0.5\columnwidth}}
+	\input{{figures/pdf_tex/{title}.pdf_tex}}
+\end{{figure}}
+""")
+		f.close()
+		print(f"\includeExperimentPlot{{\\normalsize}}{{0.5}}{{{title}}}{{{title}}}")
+
 doc = ss.Document()
 
 layout = ss.VBoxLayout()
@@ -398,8 +471,11 @@ for piece in data:
 		plot = plot_strawman(piece["title"], piece["color"].copy())
 	plot = configure_plot(plot)
 	plot.output_backend="svg"
-	name = f"../output/{piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')}.svg"
+	title_sanitized = piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')
+	name = f"../output/{title_sanitized}.svg"
 	export_svgs(plot, filename=name)
+	# export_pdf_latex(title_sanitized, True)
+	export_pdf(title_sanitized, True)
 
 	layout_horizontal.addSVG(name, alignment=ss.AlignTop|ss.AlignHCenter)
 
@@ -408,3 +484,5 @@ for piece in data:
 layout.addLayout(layout_horizontal)
 doc.setLayout(layout)
 doc.save("../output/plots.svg")
+
+# export_pdf_latex("plots", False)
