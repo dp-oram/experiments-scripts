@@ -8,7 +8,12 @@ from bokeh.transform import dodge, factor_cmap
 import svg_stack as ss
 import subprocess
 
+default_height = 200
+default_width = 300
+
 export_to_figures = True
+
+no_title = True
 
 def configure_plot(plot):
 	plot.legend.background_fill_alpha = 0.0
@@ -21,12 +26,14 @@ def configure_plot(plot):
 	plot.title.text_font = "libertine"
 	plot.xaxis.major_label_text_font = "libertine"
 	plot.yaxis.major_label_text_font = "libertine"
+	
+	if no_title:
+		plot.title = None
 
 	return plot
 
-def make_barchart(bins, values, title, color):
+def make_barchart(bins, values, title, color, width, height):
 
-	width = 300
 	coefficient = 1.2
 
 	if len(values) == 3:
@@ -49,7 +56,7 @@ def make_barchart(bins, values, title, color):
 
 	source = ColumnDataSource(data=data)
 
-	plot = figure(x_range=bins, y_range=(0, max(values)*coefficient), title=title, toolbar_location=None, tools="", plot_width=width, plot_height=200)
+	plot = figure(x_range=bins, y_range=(0, max(values)*coefficient), title=title, toolbar_location=None, tools="", plot_width=width, plot_height=height)
 
 	plot.vbar(x="bins", top="values", width=0.8, color="color", legend_field="bins", source=source, alpha=0.8)
 
@@ -71,10 +78,14 @@ def make_barchart(bins, values, title, color):
 	)
 
 	plot.add_layout(labels)
+	
+	# hack!
+	if title == "Mechanism":
+		plot.xaxis.major_label_orientation = 1
 
 	return plot
 
-def make_barchart_double(bins, values1, values2, title, color1, color2):
+def make_barchart_double(bins, values1, values2, title, color1, color2, width, height):
 
 	source = ColumnDataSource(
 		data={
@@ -86,7 +97,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 		}
 	)
 
-	plot = figure(x_range=bins, y_range=(0, max(max(values1["data"], values2["data"]))*1.4), title=title, toolbar_location=None, tools="", plot_width=300, plot_height=200)
+	plot = figure(x_range=bins, y_range=(0, max(max(values1["data"], values2["data"]))*1.4), title=title, toolbar_location=None, tools="", plot_width=width, plot_height=height)
 
 	plot.vbar(x=dodge('bins', -0.2, range=plot.x_range), top=values1["title"], width=0.4, source=source, color="color1", legend_label=values1["title"], alpha=0.8)
 	plot.vbar(x=dodge('bins', +0.2, range=plot.x_range), top=values2["title"], width=0.4, source=source, color="color2", legend_label=values2["title"], alpha=0.8)
@@ -124,7 +135,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2):
 
 	return plot
 
-def epsilons_plot(title, colors):
+def epsilons_plot(title, colors, width, height):
 	epsilons = ['0.01', '0.025', '0.05', '0.075', '0.1', '0.25', '0.5', '0.6', '0.693', '0.7', '0.8', '0.9', '1']
 	noises = ['1959', '851', '469', '337', '270', '146', '103', '95', '90', '90', '86', '83', '80']
 	totals = ['2039', '931', '548', '417', '350', '225', '182', '175', '170', '170', '165', '162', '160']
@@ -134,8 +145,8 @@ def epsilons_plot(title, colors):
 
 	plot = figure(
 		title=title,
-		plot_width=300,
-		plot_height=200
+		plot_width=width,
+		plot_height=height
 	)
 
 	rNoises = plot.line(epsilons, noises, line_width=lineSize, color="#%02x%02x%02x" % colors[0])
@@ -148,7 +159,7 @@ def epsilons_plot(title, colors):
 
 	return plot
 
-def plot_strawman(title, colors):
+def plot_strawman(title, colors, width, height):
 	categories = ["Record size", "Data size", "Threads"]
 	factors = [
 		(categories[0], "1KB"),
@@ -181,7 +192,7 @@ def plot_strawman(title, colors):
 	del colors[1]
 	del colors[2]
 
-	plot = figure(x_range=FactorRange(*factors), y_axis_type="log", y_range=(10, max(x)*1.3), title=title, plot_height=200, plot_width=300, toolbar_location=None, tools="")
+	plot = figure(x_range=FactorRange(*factors), y_axis_type="log", y_range=(10, max(x)*1.3), title=title, plot_height=height, plot_width=width, toolbar_location=None, tools="")
 
 	plot.vbar(x=factors, fill_color=factor_cmap('x', palette=["#%02x%02x%02x" % c for c in colors], factors=categories, end=1), top=x, width=0.9, alpha=0.8, bottom=0.1)
 
@@ -297,7 +308,9 @@ data = [
 		"title": "Epsilon",
 		"bins": ["0.1", "0.5", "ln(2)", "1.0", "ln(3)"],
 		"values": [2293, 868, 840, 816, 783],
-		"color": colors["blue"]
+		"color": colors["blue"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Scalability",
@@ -311,59 +324,79 @@ data = [
 			"data": [7626, 6967, 4874, 4699, 5857]
 		},
 		"color1": colors["dusty"],
-		"color2": colors["turquoise"]
+		"color2": colors["turquoise"],
+		"width": default_width*2,
+		"height": default_height
 	},
 	{
 		"title": "Selectivity",
 		"bins": ["0.1%", "0.25%", "0.5%", "1%", "2%"],
 		"values": [393, 605, 840, 1216, 2139],
-		"color": colors["green"]
+		"color": colors["green"],
+		"width": default_width*2,
+		"height": default_height
 	},
 	{
 		"title": "Record Size",
 		"bins": ["1KB", "4KB", "16KB"],
 		"values": [323, 840, 3610],
-		"color": colors["ochre"]
+		"color": colors["ochre"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Data Size",
 		"bins": ["100K", "1M", "10M"],
 		"values": [294, 840, 6442],
-		"color": colors["orange"]
+		"color": colors["orange"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Domain Size",
 		"bins": ["100", "10K", "1M"],
 		"values": [5396, 840, 1030],
-		"color": colors["terracotta"]
+		"color": colors["terracotta"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Data Distribution",
 		"bins": ["CA empl.", "Uniform", "PUMS"],
 		"values": [1162, 840, 1675],
-		"color": colors["rose"]
+		"color": colors["rose"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Query Distribution",
 		"bins": ["Range 1K", "Follow", "Uniform"],
 		"values": [1278, 1675, 969],
-		"color": colors["maroon"]
+		"color": colors["maroon"],
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"title": "Mechanism",
 		"bins": ["MySQL", "PostgreSQL", "DP-ORAM", "Linear Scan"],
 		"values": [97, 220, 840, 2000],
-		"color": colors["violet"]
+		"color": colors["violet"],
+		"width": int(default_width*(0.33/0.5)),
+		"height": default_height
 	},
 	{
 		"special": "epsilons",
 		"title": "Epsilon effect",
-		"color": (colors["lilac"][0], colors["lilac"][4])
+		"color": (colors["lilac"][0], colors["lilac"][4]),
+		"width": default_width,
+		"height": default_height
 	},
 	{
 		"special": "strawman",
 		"title": "Linear Scan",
-		"color": colors["storm"]
+		"color": colors["storm"],
+		"width": int(default_width*(0.66/0.5)),
+		"height": default_height
 	},
 ]
 
@@ -462,13 +495,13 @@ for piece in data:
 
 	plot = None
 	if "values" in piece:
-		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"].copy())
+		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"].copy(), piece["width"], piece["height"])
 	elif "values1" in piece:
-		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"].copy(), piece["color2"].copy())
+		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"].copy(), piece["color2"].copy(), piece["width"], piece["height"])
 	elif "special" in piece and piece["special"] == "epsilons":
-		plot = epsilons_plot(piece["title"], piece["color"])
+		plot = epsilons_plot(piece["title"], piece["color"], piece["width"], piece["height"])
 	elif "special" in piece and piece["special"] == "strawman":
-		plot = plot_strawman(piece["title"], piece["color"].copy())
+		plot = plot_strawman(piece["title"], piece["color"].copy(), piece["width"], piece["height"])
 	plot = configure_plot(plot)
 	plot.output_backend="svg"
 	title_sanitized = piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')
