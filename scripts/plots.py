@@ -15,20 +15,28 @@ export_to_figures = True
 
 no_title = True
 
-def configure_plot(plot):
-	plot.legend.background_fill_alpha = 0.0
-	plot.legend.border_line_color = None
-	plot.legend.label_text_font_size = "8pt"
-	plot.legend.label_text_font = "libertine"
+def configure_plot(plot, title):
+	if title == "Epsilon effect" or title == "Scalability":
+		plot.legend.background_fill_alpha = 0.0
+		plot.legend.border_line_color = None
+		plot.legend.label_text_font_size = "8pt"
+		plot.legend.label_text_font = "libertine"
+
 	plot.title.align = "center"
 	plot.title.offset = 20
 	plot.title.vertical_align = "top"
 	plot.title.text_font = "libertine"
 	plot.xaxis.major_label_text_font = "libertine"
 	plot.yaxis.major_label_text_font = "libertine"
-	
+
 	if no_title:
 		plot.title = None
+
+	plot.yaxis[0].axis_label_standoff=10
+	if title == "Epsilon effect":
+		plot.yaxis[0].axis_label="Number of records"
+	else:
+		plot.yaxis[0].axis_label="Query overhead in ms"
 
 	return plot
 
@@ -78,7 +86,7 @@ def make_barchart(bins, values, title, color, width, height):
 	)
 
 	plot.add_layout(labels)
-	
+
 	# hack!
 	if title == "Mechanism":
 		plot.xaxis.major_label_orientation = 1
@@ -112,7 +120,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2, width, h
 		y=values1["title"],
 		text=values1["title"],
 		level='glyph',
-		x_offset=-23,
+		x_offset=-30,
 		y_offset=5,
 		source=source,
 		render_mode='canvas',
@@ -123,7 +131,7 @@ def make_barchart_double(bins, values1, values2, title, color1, color2, width, h
 		y=values2["title"],
 		text=values2["title"],
 		level='glyph',
-		x_offset=-2,
+		x_offset=5,
 		y_offset=5,
 		source=source,
 		render_mode='canvas',
@@ -155,7 +163,7 @@ def epsilons_plot(title, colors, width, height):
 	rTotals = plot.line(epsilons, totals, line_width=lineSize, color="#%02x%02x%02x" % colors[1])
 	rTotalsMarkers = plot.circle(epsilons, totals, size=circleSize, color="#%02x%02x%02x" % colors[1])
 
-	plot.add_layout(Legend(items=[("Noise records", [rNoises, rNoisesMarkers]), ("Total records", [rTotals, rTotalsMarkers])]))
+	plot.add_layout(Legend(items=[("Noise records    ", [rNoises, rNoisesMarkers]), ("Total records    ", [rTotals, rTotalsMarkers])]))
 
 	return plot
 
@@ -316,7 +324,7 @@ data = [
 		"title": "Scalability",
 		"bins": ["8", "16", "32", "64", "96"],
 		"values1": {
-			"title": "Gamma method",
+			"title": "Gamma method       ",
 			"data": [4576, 2618, 1571, 840, 1012]
 		},
 		"values2": {
@@ -365,7 +373,7 @@ data = [
 		"bins": ["CA empl.", "Uniform", "PUMS"],
 		"values": [1162, 840, 1675],
 		"color": colors["rose"],
-		"width": default_width,
+		"width": int(default_width*1.2),
 		"height": default_height
 	},
 	{
@@ -373,7 +381,7 @@ data = [
 		"bins": ["Range 1K", "Follow", "Uniform"],
 		"values": [1278, 1675, 969],
 		"color": colors["maroon"],
-		"width": default_width,
+		"width": int(default_width*1.2),
 		"height": default_height
 	},
 	{
@@ -502,7 +510,7 @@ for piece in data:
 		plot = epsilons_plot(piece["title"], piece["color"], piece["width"], piece["height"])
 	elif "special" in piece and piece["special"] == "strawman":
 		plot = plot_strawman(piece["title"], piece["color"].copy(), piece["width"], piece["height"])
-	plot = configure_plot(plot)
+	plot = configure_plot(plot, piece["title"])
 	plot.output_backend="svg"
 	title_sanitized = piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')
 	name = f"../output/{title_sanitized}.svg"
