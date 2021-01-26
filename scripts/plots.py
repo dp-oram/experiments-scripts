@@ -386,7 +386,7 @@ data = [
 	},
 	{
 		"title": "Mechanism",
-		"bins": ["MySQL", "PostgreSQL", "DP-ORAM", "Linear Scan"],
+		"bins": ["MySQL", "PostgreSQL", "Epsolute", "Linear Scan"],
 		"values": [97, 220, 840, 2000],
 		"color": colors["violet"],
 		"width": int(default_width*(0.33/0.5)),
