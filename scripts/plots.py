@@ -12,6 +12,7 @@ default_height = 200
 default_width = 300
 
 export_to_figures = True
+# export_to_figures = False
 
 no_title = True
 
@@ -35,6 +36,8 @@ def configure_plot(plot, title):
 	plot.yaxis[0].axis_label_standoff=10
 	if title == "Epsilon effect":
 		plot.yaxis[0].axis_label="Number of records"
+	elif title == "Linear Scan":
+		plot.yaxis[0].axis_label="Query overhead in s"
 	else:
 		plot.yaxis[0].axis_label="Query overhead in ms"
 
@@ -200,9 +203,29 @@ def plot_strawman(title, colors, width, height):
 	del colors[1]
 	del colors[2]
 
-	plot = figure(x_range=FactorRange(*factors), y_axis_type="log", y_range=(10, max(x)*1.3), title=title, plot_height=height, plot_width=width, toolbar_location=None, tools="")
+	plot = figure(x_range=FactorRange(*factors), y_axis_type="log", y_range=(10, max(x)*5), title=title, plot_height=height, plot_width=width, toolbar_location=None, tools="")
 
 	plot.vbar(x=factors, fill_color=factor_cmap('x', palette=["#%02x%02x%02x" % c for c in colors], factors=categories, end=1), top=x, width=0.9, alpha=0.8, bottom=0.1)
+
+	labels = LabelSet(
+		x="factors",
+		y="x",
+		text='labels',
+		level='glyph',
+		x_offset=-10,
+		y_offset=5,
+		source=ColumnDataSource(
+			data=dict(
+				x=x,
+				factors=factors,
+				labels=[f"{round(value / 1000, 1) if value < 4000 else int(value / 1000)} s" for value in x]
+			)
+		),
+		render_mode='canvas',
+		text_font_size="8pt"
+	)
+
+	plot.add_layout(labels)
 
 	plot.xaxis.major_label_orientation = 1
 	plot.xgrid.grid_line_color = None
