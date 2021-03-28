@@ -6,18 +6,18 @@ Documentation=https://dbogatov.org/
 [Service]
 Type=simple
 
-WorkingDirectory=/home/dmytro/oblivious-joins/epsolute-sgx/epsolute-sgx
+WorkingDirectory=/home/midas/oblivious-joins/epsolute-sgx/epsolute-sgx
 
 ExecStartPre=/usr/bin/git pull
 ExecStartPre=/usr/bin/make proxy
 
-ExecStart=/home/dmytro/oblivious-joins/epsolute-sgx/epsolute-sgx/bin/proxy --port __PORT__
+ExecStart=/home/midas/oblivious-joins/epsolute-sgx/epsolute-sgx/bin/proxy --port __PORT__
 
 TimeoutStopSec=0
 Restart=always
 RestartSec=5
 
-User=dmytro
+User=midas
 
 [Install]
 WantedBy=multi-user.target
