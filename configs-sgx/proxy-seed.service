@@ -1,0 +1,24 @@
+[Unit]
+Description=Proxy server (port __PORT__)
+After=network.target
+Documentation=https://dbogatov.org/
+
+[Service]
+Type=simple
+
+WorkingDirectory=/home/dmytro/oblivious-joins/epsolute-sgx/epsolute-sgx
+
+ExecStartPre=/usr/bin/git pull
+ExecStartPre=/usr/bin/make proxy
+
+ExecStart=/home/dmytro/oblivious-joins/epsolute-sgx/epsolute-sgx/bin/proxy --port __PORT__
+
+TimeoutStopSec=0
+Restart=always
+RestartSec=5
+
+User=dmytro
+
+[Install]
+WantedBy=multi-user.target
+Alias=proxy-__PORT__.service
