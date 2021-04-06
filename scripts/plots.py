@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
 
+# For bokeh 2.3.0 had to install miniconda, and run
+# conda install selenium python-chromedriver-binary=89 -c conda-forge
+
 from bokeh.io import show, export_svgs
 from bokeh.models import ColumnDataSource, LabelSet, Legend, FactorRange, FuncTickFormatter
 from bokeh.plotting import figure
@@ -427,7 +430,7 @@ data = [
 	},
 	{
 		"title": "Multiple attributes",
-		"bins": ["Only A", "A and B, query A", "A and B, query alternating", "A and B, query B", "Only B"],
+		"bins": ["Only A", "A and B, query A", "Alternating queries", "A and B, query B", "Only B"],
 		"values": [840, 884, 972, 1060, 1030],
 		"color": colors["green"],
 		"width": default_width * 2,
@@ -517,6 +520,21 @@ layout = ss.VBoxLayout()
 count = 0
 layout_horizontal = ss.HBoxLayout()
 
+import os
+import shutil
+
+from chromedriver_binary.utils import get_chromedriver_path
+from selenium.webdriver import Chrome, ChromeOptions
+
+options = ChromeOptions()
+options.binary_location = shutil.which('chrome')
+
+options.add_argument('--headless')
+options.add_argument('--disable-gpu')
+options.add_argument("--no-sandbox")
+
+web_driver = Chrome(executable_path=os.path.join(get_chromedriver_path(), 'chromedriver'), options=options)
+
 for piece in data:
 	if count == 3 or count == 8:
 		layout.addLayout(layout_horizontal)
@@ -535,7 +553,7 @@ for piece in data:
 	plot.output_backend = "svg"
 	title_sanitized = piece['title'].lower().replace(' ', '-').replace('(', '').replace(')', '')
 	name = f"../output/{title_sanitized}.svg"
-	export_svgs(plot, filename=name)
+	export_svgs(plot, filename=name, webdriver=web_driver)
 	# export_pdf_latex(title_sanitized, True)
 	export_pdf(title_sanitized, True)
 
