@@ -6,3 +6,5 @@ scipy
 selenium
 psycopg2-binary
 PyPDF2
+svg_stack
+lxml
