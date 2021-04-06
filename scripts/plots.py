@@ -427,7 +427,7 @@ data = [
 	},
 	{
 		"title": "Multiple attributes",
-		"bins": ["Only A", "A and B, query A", "A and B, query", "1%", "2%"],
+		"bins": ["Only A", "A and B, query A", "A and B, query alternating", "A and B, query B", "Only B"],
 		"values": [840, 884, 972, 1060, 1030],
 		"color": colors["green"],
 		"width": default_width * 2,
