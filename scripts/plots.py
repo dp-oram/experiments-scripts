@@ -95,6 +95,16 @@ def make_barchart(bins, values, title, color, width, height, scale):
 		text_font_size="8pt",
 	)
 
+	if title == "Mechanism":
+		plot.yaxis.formatter = FuncTickFormatter(code='''
+			return 10 +
+				(Math.log10(tick).toString()
+				.split('')
+				.map(function (d) { return d === '-' ? '⁻' : '⁰¹²³⁴⁵⁶⁷⁸⁹'[+d]; })
+				.join(''));
+			''')
+
+
 	plot.add_layout(labels)
 
 	return plot
