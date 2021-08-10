@@ -48,7 +48,7 @@ def configure_plot(plot, title):
 	return plot
 
 
-def make_barchart(bins, values, title, color, width, height):
+def make_barchart(bins, values, title, color, width, height, scale):
 
 	coefficient = 1.2
 
@@ -61,15 +61,17 @@ def make_barchart(bins, values, title, color, width, height):
 		coefficient = 1.0
 
 	data = dict(bins=bins, values=values, color=["#%02x%02x%02x" % x for x in color], labels=values.copy())
-	# hack!
+
 	if title == "Mechanism":
-		data["labels"][3] = 15000
+		coefficient = 5.0
+		data["labels"][3] = "15 s"
+		data["labels"][4] = "19.5 min"
 
 	source = ColumnDataSource(data=data)
 
-	plot = figure(x_range=bins, y_range=(0, max(values) * coefficient), title=title, toolbar_location=None, tools="", plot_width=width, plot_height=height)
+	plot = figure(x_range=bins, y_axis_type=scale, y_range=(10, max(values) * coefficient), title=title, toolbar_location=None, tools="", plot_width=width, plot_height=height)
 
-	plot.vbar(x="bins", top="values", width=0.8, color="color", legend_field="bins", source=source, alpha=0.8)
+	plot.vbar(x="bins", top="values", width=0.8, color="color", legend_field="bins", source=source, alpha=0.8, bottom=0.1)
 
 	plot.xgrid.grid_line_color = None
 	plot.legend.orientation = "horizontal"
@@ -408,10 +410,10 @@ data = [
 	},
 	{
 		"title": "Mechanism",
-		"bins": ["MySQL", "PostgreSQL", "Epsolute", "Linear Scan"],
-		"values": [97, 220, 840, 2000],
+		"bins": ["MySQL", "PostgreSQL", "Epsolute", "Linear Scan", "Shrinkwrap˟"],
+		"values": [97, 220, 840, 15000, 1175000],
 		"color": colors["violet"],
-		"width": int(default_width * (0.33 / 0.5)),
+		"width": default_width * 2,
 		"height": default_height,
 	},
 	{
@@ -437,18 +439,6 @@ data = [
 		"height": default_height,
 	},
 ]
-
-# plots
-# for piece in data:
-# 	if "values" in piece:
-# 		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"])
-# 	else:
-# 		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"], piece["color2"])
-# 	plots += [plot]
-
-# grid = gridplot(plots, ncols=3, plot_width=350, plot_height=200)
-
-# show(grid)
 
 
 def export_pdf(title, put_to_paper):
@@ -533,7 +523,8 @@ options.add_argument('--headless')
 options.add_argument('--disable-gpu')
 options.add_argument("--no-sandbox")
 
-web_driver = Chrome(executable_path=os.path.join(get_chromedriver_path(), 'chromedriver'), options=options)
+# web_driver = Chrome(executable_path=os.path.join(get_chromedriver_path(), 'chromedriver'), options=options)
+web_driver = Chrome(executable_path="/usr/local/bin/chromedriver", options=options)
 
 for piece in data:
 	if count == 3 or count == 8:
@@ -541,8 +532,9 @@ for piece in data:
 		layout_horizontal = ss.HBoxLayout()
 
 	plot = None
+	print(piece["title"])
 	if "values" in piece:
-		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"].copy(), piece["width"], piece["height"])
+		plot = make_barchart(piece["bins"], piece["values"], piece["title"], piece["color"].copy(), piece["width"], piece["height"], "auto" if piece["title"] != "Mechanism" else "log")
 	elif "values1" in piece:
 		plot = make_barchart_double(piece["bins"], piece["values1"], piece["values2"], piece["title"], piece["color1"].copy(), piece["color2"].copy(), piece["width"], piece["height"])
 	elif "special" in piece and piece["special"] == "epsilons":
