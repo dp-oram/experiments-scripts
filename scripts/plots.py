@@ -42,6 +42,8 @@ def configure_plot(plot, title):
 		plot.yaxis[0].axis_label = "Number of records"
 	elif title == "Linear Scan":
 		plot.yaxis[0].axis_label = "Query overhead in s"
+	elif title == "Mechanism":
+		plot.yaxis[0].axis_label = "Query overhead"
 	else:
 		plot.yaxis[0].axis_label = "Query overhead in ms"
 
@@ -64,6 +66,9 @@ def make_barchart(bins, values, title, color, width, height, scale):
 
 	if title == "Mechanism":
 		coefficient = 5.0
+		data["labels"][0] = "97 ms"
+		data["labels"][1] = "220 ms"
+		data["labels"][2] = "840 ms"
 		data["labels"][3] = "15 s"
 		data["labels"][4] = "19.5 min"
 
@@ -91,10 +96,6 @@ def make_barchart(bins, values, title, color, width, height, scale):
 	)
 
 	plot.add_layout(labels)
-
-	# hack!
-	if title == "Mechanism":
-		plot.xaxis.major_label_orientation = 1
 
 	return plot
 
@@ -427,7 +428,7 @@ data = [
 		"special": "strawman",
 		"title": "Linear Scan",
 		"color": colors["storm"],
-		"width": int(default_width * (0.66 / 0.5)),
+		"width": default_width * 2,
 		"height": default_height,
 	},
 	{
