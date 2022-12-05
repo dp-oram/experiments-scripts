@@ -6,12 +6,12 @@ Documentation=https://pathoram.dbogatov.org/
 [Service]
 Type=simple
 
-WorkingDirectory=/home/dmytro/dp-oram/dp-oram
+WorkingDirectory=/home/dmytro/epsolute/dp-oram
 
 ExecStartPre=/usr/bin/git pull
 ExecStartPre=/usr/bin/make server
 
-ExecStart=/home/dmytro/dp-oram/dp-oram/bin/oram-server
+ExecStart=/home/dmytro/epsolute/dp-oram/bin/oram-server
 
 TimeoutStopSec=0
 Restart=on-failure
